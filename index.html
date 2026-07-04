@@ -206,6 +206,7 @@
         <h2>🎙️ 전체 대본</h2>
         <pre id="script"></pre>
         <button class="copy-btn" onclick="copyText('script')">복사</button>
+        <button class="copy-btn" onclick="makeTTS()">AI 음성 만들기</button>
       </div>
 
       <div class="card">
@@ -317,6 +318,55 @@
       navigator.clipboard.writeText(text);
       alert("복사됐어!");
     }
+    <script>
+async function makeTTS() {
+  const scriptText = document.getElementById("script").innerText;
+
+  if (!scriptText) {
+    alert("먼저 쇼츠 대본을 만들어줘!");
+    return;
+  }
+
+  try {
+    const res = await fetch("https://shorts-maker-api.onrender.com/make-tts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        text: scriptText,
+        voice: "alloy"
+      })
+    });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "TTS 실패");
+    }
+
+    const data = await res.json();
+    const audioUrl = "https://shorts-maker-api.onrender.com" + data.audio_url;
+
+    const audio = document.createElement("audio");
+    audio.controls = true;
+    audio.src = audioUrl;
+
+    const link = document.createElement("a");
+    link.href = audioUrl;
+    link.download = "shorts-voice.mp3";
+    link.innerText = "MP3 다운로드";
+    link.style.display = "block";
+    link.style.marginTop = "10px";
+
+    const card = document.getElementById("script").parentElement;
+    card.appendChild(audio);
+    card.appendChild(link);
+
+  } catch (err) {
+    alert("음성 생성 오류: " + err.message);
+  }
+}
+</script>
   </script>
 </body>
 </html>
