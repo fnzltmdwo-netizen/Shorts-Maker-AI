@@ -3,427 +3,392 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>승재 쇼츠 자동 생성기</title>
+
+  <title>Shorts Maker AI - Audio Pack</title>
 
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: white;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #fff7d6, #ffe2ef);
+      font-family: Arial, "Noto Sans KR", sans-serif;
+      color: #222;
     }
 
     .container {
+      width: 100%;
       max-width: 900px;
       margin: 0 auto;
-      padding: 30px 18px;
+      padding: 40px 20px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
     }
 
     h1 {
+      margin: 0 0 10px;
+      font-size: 32px;
       text-align: center;
-      margin-bottom: 10px;
     }
 
-    .desc {
+    .subtitle {
+      margin: 0 0 28px;
       text-align: center;
-      color: #aaa;
-      margin-bottom: 28px;
+      color: #666;
+      line-height: 1.6;
+    }
+
+    .label {
+      font-weight: 700;
+      margin-bottom: 10px;
+      display: block;
     }
 
     textarea {
       width: 100%;
-      min-height: 220px;
-      padding: 16px;
-      border-radius: 12px;
-      border: none;
+      min-height: 360px;
       resize: vertical;
-      font-size: 15px;
-      box-sizing: border-box;
-    }
-
-    .upload-box {
-      margin-top: 14px;
-      padding: 18px;
-      background: #1f1f1f;
-      border: 2px dashed #555;
+      border: 2px solid #eee;
       border-radius: 16px;
-      text-align: center;
+      padding: 18px;
+      font-size: 16px;
+      line-height: 1.6;
+      outline: none;
+      font-family: inherit;
     }
 
-    input[type="file"] {
-      width: 100%;
-      margin-top: 10px;
-      color: #ddd;
+    textarea:focus {
+      border-color: #ffb703;
     }
 
-    .preview-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      margin-top: 14px;
-    }
-
-    .preview-grid img {
-      width: 100%;
-      height: 130px;
-      object-fit: cover;
-      border-radius: 12px;
-      background: #333;
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
     }
 
     button {
-      width: 100%;
-      margin-top: 12px;
-      padding: 15px;
+      flex: 1;
+      min-width: 180px;
       border: none;
-      border-radius: 12px;
-      background: #ff3b5c;
-      color: white;
+      border-radius: 14px;
+      padding: 16px 20px;
       font-size: 17px;
-      font-weight: bold;
+      font-weight: 700;
       cursor: pointer;
+      transition: 0.15s;
     }
 
     button:disabled {
-      background: #555;
+      opacity: 0.6;
       cursor: not-allowed;
     }
 
-    .card {
-      margin-top: 22px;
-      background: #1f1f1f;
-      border-radius: 16px;
-      padding: 18px;
-      box-sizing: border-box;
+    .primary {
+      background: #ffb703;
+      color: #111;
     }
 
-    .card h2 {
-      margin-top: 0;
-      font-size: 20px;
+    .primary:hover:not(:disabled) {
+      background: #ffa600;
+      transform: translateY(-1px);
     }
 
-    pre {
-      white-space: pre-wrap;
-      word-break: keep-all;
-      line-height: 1.65;
-      background: #151515;
-      padding: 14px;
-      border-radius: 12px;
-      color: #f1f1f1;
+    .secondary {
+      background: #f1f1f1;
+      color: #333;
     }
 
-    audio,
-    video {
-      width: 100%;
-      margin-top: 12px;
-      border-radius: 14px;
+    .secondary:hover:not(:disabled) {
+      background: #e6e6e6;
     }
 
     .status {
-      margin-top: 14px;
-      color: #ffd166;
-      text-align: center;
-      font-weight: bold;
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      display: none;
+      line-height: 1.5;
+      white-space: pre-line;
     }
 
-    .hidden {
+    .status.info {
+      display: block;
+      background: #eef6ff;
+      color: #23527c;
+    }
+
+    .status.success {
+      display: block;
+      background: #eaf8ef;
+      color: #1f7a3f;
+    }
+
+    .status.error {
+      display: block;
+      background: #ffecec;
+      color: #b00020;
+    }
+
+    .preview {
+      margin-top: 24px;
       display: none;
     }
 
-    a {
-      color: #7cc7ff;
-      word-break: break-all;
+    .preview h2 {
+      margin: 0 0 12px;
+      font-size: 22px;
     }
 
-    .small {
-      color: #aaa;
+    .block {
+      border: 1px solid #eee;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      background: #fafafa;
+    }
+
+    .time {
+      font-weight: 700;
+      color: #ff8a00;
+      margin-bottom: 6px;
+    }
+
+    .footer {
+      text-align: center;
+      color: #777;
       font-size: 13px;
+      margin-top: 18px;
       line-height: 1.5;
     }
 
-    .tip {
-      color: #bbb;
-      font-size: 13px;
+    .sample {
+      margin-top: 14px;
+      font-size: 14px;
+      color: #777;
       line-height: 1.5;
-      margin-top: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .card {
+        padding: 24px 18px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      textarea {
+        min-height: 300px;
+      }
+
+      button {
+        width: 100%;
+      }
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h1>승재 쇼츠 자동 생성기</h1>
-    <p class="desc">기사 + 사진 → 대본 → AI 음성 → 자막 쇼츠 영상</p>
+    <div class="card">
+      <h1>🎬 Shorts Maker AI</h1>
+      <p class="subtitle">
+        쇼츠 대본을 붙여넣으면<br />
+        프리미어용 음성 패키지를 자동 생성합니다.
+      </p>
 
-    <textarea id="articleInput" placeholder="여기에 기사 내용을 붙여넣어줘"></textarea>
+      <label class="label" for="scriptInput">쇼츠 대본</label>
 
-    <div class="upload-box">
-      <b>쇼츠 배경 사진 업로드</b>
-      <p class="tip">사진 4장 추천 / 최대 8장까지 가능 / 영상 길이에 맞춰 자동으로 줌인·줌아웃·패닝 효과 적용</p>
-      <input type="file" id="imageInput" multiple accept="image/*" onchange="handleImages()" />
-      <div id="previewGrid" class="preview-grid"></div>
+      <textarea id="scriptInput" placeholder="예시:
+0~2초
+송가인이 빵집 사장님 선언했습니다
+
+2~6초
+송가인이 버킷리스트였던 베이킹에 도전했는데요
+
+6~10초
+정다경 강예슬 김희진 두리와 함께해 특급 케미를 선보였습니다"></textarea>
+
+      <div class="sample">
+        형식: <b>0~2초</b> 다음 줄에 대본을 입력하면 됩니다.
+      </div>
+
+      <div class="buttons">
+        <button class="secondary" onclick="previewScript()">대본 확인</button>
+        <button class="primary" onclick="generatePack()">패키지 생성 & 다운로드</button>
+      </div>
+
+      <div id="status" class="status"></div>
+
+      <div id="preview" class="preview">
+        <h2>대본 분석 결과</h2>
+        <div id="previewList"></div>
+      </div>
     </div>
 
-    <button id="scriptBtn" onclick="generateScript()">1. 쇼츠 대본 생성</button>
-    <button id="voiceBtn" onclick="generateVoice()" disabled>2. AI 음성 생성</button>
-    <button id="videoBtn" onclick="makeVideo()" disabled>3. 영상 만들기</button>
-
-    <div id="status" class="status"></div>
-
-    <div id="scriptBox" class="card hidden">
-      <h2>생성된 제목</h2>
-      <pre id="titleOutput"></pre>
-
-      <h2>화면 대본</h2>
-      <pre id="scriptOutput"></pre>
-
-      <h2>AI 음성용 대본</h2>
-      <pre id="ttsOutput"></pre>
-    </div>
-
-    <div id="voiceBox" class="card hidden">
-      <h2>AI 음성</h2>
-      <audio id="audioPlayer" controls></audio>
-      <p id="voiceLink" class="small"></p>
-    </div>
-
-    <div id="videoBox" class="card hidden">
-      <h2>완성 영상</h2>
-      <video id="videoPlayer" controls></video>
-      <p id="videoLink" class="small"></p>
-      <p id="srtLink" class="small"></p>
+    <div class="footer">
+      생성 파일: 1.mp3, 2.mp3, subtitles.srt, script.txt, premiere_guide.txt
     </div>
   </div>
 
   <script>
-    const API_BASE = "https://shorts-maker-api.onrender.com";
+    const API_BASE_URL = "https://shorts-maker-api.onrender.com";
 
-    let uploadedImagesBase64 = [];
-
-    let shortsData = {
-      title: "",
-      script: "",
-      tts_text: "",
-      voice_url: "",
-      alignment_url: "",
-      video_url: "",
-      srt_url: ""
-    };
-
-    function setStatus(message) {
-      document.getElementById("status").innerText = message;
+    function setStatus(message, type = "info") {
+      const status = document.getElementById("status");
+      status.className = "status " + type;
+      status.textContent = message;
     }
 
-    function setLoading(buttonId, isLoading, text) {
-      const btn = document.getElementById(buttonId);
-      btn.disabled = isLoading;
-      if (text) btn.innerText = text;
+    function getScriptText() {
+      return document.getElementById("scriptInput").value.trim();
     }
 
-    function fileToBase64(file) {
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
+    function validateScript(script) {
+      if (!script) {
+        setStatus("대본을 입력해줘!", "error");
+        return false;
+      }
+
+      if (!script.match(/\d+(\.\d+)?\s*[~\-]\s*\d+(\.\d+)?\s*초/)) {
+        setStatus("시간 형식이 필요해!\n예: 0~2초", "error");
+        return false;
+      }
+
+      return true;
     }
 
-    async function handleImages() {
-      const input = document.getElementById("imageInput");
-      const files = Array.from(input.files).slice(0, 8);
-      const previewGrid = document.getElementById("previewGrid");
+    async function previewScript() {
+      const script = getScriptText();
 
-      uploadedImagesBase64 = [];
-      previewGrid.innerHTML = "";
-
-      if (files.length === 0) {
-        setStatus("");
+      if (!validateScript(script)) {
         return;
       }
 
-      setStatus("사진 불러오는 중...");
-
-      for (const file of files) {
-        const base64 = await fileToBase64(file);
-        uploadedImagesBase64.push(base64);
-
-        const img = document.createElement("img");
-        img.src = base64;
-        previewGrid.appendChild(img);
-      }
-
-      setStatus(`사진 ${uploadedImagesBase64.length}장 준비 완료`);
-    }
-
-    async function generateScript() {
-      const article = document.getElementById("articleInput").value.trim();
-
-      if (!article) {
-        alert("기사 내용을 먼저 붙여넣어줘!");
-        return;
-      }
+      setStatus("대본을 분석하는 중...", "info");
 
       try {
-        setStatus("쇼츠 대본 생성 중...");
-        setLoading("scriptBtn", true, "대본 생성 중...");
-
-        document.getElementById("voiceBtn").disabled = true;
-        document.getElementById("videoBtn").disabled = true;
-
-        const res = await fetch(`${API_BASE}/generate-script`, {
+        const response = await fetch(API_BASE_URL + "/parse-script", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            article: article
-          })
+          body: JSON.stringify({ script }),
         });
 
-        const data = await res.json();
+        const data = await response.json();
 
-        if (!res.ok) {
-          throw new Error(data.detail || "대본 생성 실패");
+        if (!response.ok) {
+          throw new Error(data.detail || "대본 분석 실패");
         }
 
-        shortsData.title = data.title || "";
-        shortsData.script = data.script || "";
-        shortsData.tts_text = data.tts_text || data.script || "";
-        shortsData.voice_url = "";
-        shortsData.alignment_url = "";
-        shortsData.video_url = "";
-        shortsData.srt_url = "";
+        const preview = document.getElementById("preview");
+        const previewList = document.getElementById("previewList");
 
-        document.getElementById("titleOutput").innerText = shortsData.title;
-        document.getElementById("scriptOutput").innerText = shortsData.script;
-        document.getElementById("ttsOutput").innerText = shortsData.tts_text;
+        previewList.innerHTML = "";
 
-        document.getElementById("scriptBox").classList.remove("hidden");
-        document.getElementById("voiceBox").classList.add("hidden");
-        document.getElementById("videoBox").classList.add("hidden");
-        document.getElementById("voiceBtn").disabled = false;
+        data.blocks.forEach((block, index) => {
+          const div = document.createElement("div");
+          div.className = "block";
 
-        setStatus("대본 생성 완료! 이제 AI 음성을 만들어줘.");
-      } catch (err) {
-        console.error(err);
-        alert("대본 생성 실패: " + err.message);
-        setStatus("대본 생성 실패");
-      } finally {
-        setLoading("scriptBtn", false, "1. 쇼츠 대본 생성");
+          div.innerHTML = `
+            <div class="time">${index + 1}. ${block.start}초 ~ ${block.end}초</div>
+            <div>${escapeHtml(block.text)}</div>
+          `;
+
+          previewList.appendChild(div);
+        });
+
+        preview.style.display = "block";
+        setStatus(`대본 분석 완료! 총 ${data.count}개 구간`, "success");
+      } catch (error) {
+        setStatus("오류 발생: " + error.message, "error");
       }
     }
 
-    async function generateVoice() {
-      if (!shortsData.tts_text) {
-        alert("먼저 대본을 생성해줘!");
+    async function generatePack() {
+      const script = getScriptText();
+
+      if (!validateScript(script)) {
         return;
       }
 
+      const buttons = document.querySelectorAll("button");
+      buttons.forEach((button) => (button.disabled = true));
+
+      setStatus(
+        "음성 패키지를 생성하는 중...\nElevenLabs 음성 생성 때문에 조금 걸릴 수 있어.",
+        "info"
+      );
+
       try {
-        setStatus("AI 음성 생성 중...");
-        setLoading("voiceBtn", true, "음성 생성 중...");
-
-        document.getElementById("videoBtn").disabled = true;
-
-        const res = await fetch(`${API_BASE}/generate-voice`, {
+        const response = await fetch(API_BASE_URL + "/generate-pack", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            text: shortsData.tts_text
-          })
+          body: JSON.stringify({ script }),
         });
 
-        const data = await res.json();
+        if (!response.ok) {
+          let message = "패키지 생성 실패";
 
-        if (!res.ok) {
-          throw new Error(data.detail || "음성 생성 실패");
+          try {
+            const data = await response.json();
+            message = data.detail || message;
+          } catch (e) {}
+
+          throw new Error(message);
         }
 
-        shortsData.voice_url = data.voice_url || "";
-        shortsData.alignment_url = data.alignment_url || "";
-        shortsData.tts_text = data.tts_text || shortsData.tts_text;
+        const blob = await response.blob();
 
-        const fullAudioUrl = `${API_BASE}${shortsData.voice_url}`;
+        const disposition = response.headers.get("Content-Disposition");
+        let filename = "audio_pack.zip";
 
-        document.getElementById("audioPlayer").src = fullAudioUrl;
-        document.getElementById("voiceLink").innerHTML =
-          `음성 파일: <a href="${fullAudioUrl}" target="_blank">${fullAudioUrl}</a>`;
+        if (disposition && disposition.includes("filename=")) {
+          filename = disposition
+            .split("filename=")[1]
+            .replaceAll('"', "")
+            .trim();
+        }
 
-        document.getElementById("voiceBox").classList.remove("hidden");
-        document.getElementById("videoBox").classList.add("hidden");
-        document.getElementById("videoBtn").disabled = false;
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
 
-        setStatus("음성 생성 완료! 이제 영상 만들기를 눌러줘.");
-      } catch (err) {
-        console.error(err);
-        alert("음성 생성 실패: " + err.message);
-        setStatus("음성 생성 실패");
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+
+        a.remove();
+        window.URL.revokeObjectURL(url);
+
+        setStatus("완료! zip 파일 다운로드가 시작됐어 🎉", "success");
+      } catch (error) {
+        setStatus("오류 발생: " + error.message, "error");
       } finally {
-        setLoading("voiceBtn", false, "2. AI 음성 생성");
+        buttons.forEach((button) => (button.disabled = false));
       }
     }
 
-    async function makeVideo() {
-      if (!shortsData.voice_url) {
-        alert("먼저 AI 음성을 생성해줘!");
-        return;
-      }
-
-      if (uploadedImagesBase64.length === 0) {
-        const ok = confirm("사진을 선택하지 않았어. 검은 배경으로 만들까?");
-        if (!ok) return;
-      }
-
-      try {
-        setStatus("영상 생성 중... 사진 효과 적용 중이라 시간이 걸릴 수 있어.");
-        setLoading("videoBtn", true, "영상 생성 중...");
-
-        const res = await fetch(`${API_BASE}/make-video`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            title: shortsData.title,
-            script: shortsData.script,
-            tts_text: shortsData.tts_text,
-            voice_url: shortsData.voice_url,
-            alignment_url: shortsData.alignment_url,
-            images: uploadedImagesBase64
-          })
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.detail || "영상 생성 실패");
-        }
-
-        shortsData.video_url = data.video_url || "";
-        shortsData.srt_url = data.srt_url || "";
-
-        const fullVideoUrl = `${API_BASE}${shortsData.video_url}`;
-        const fullSrtUrl = `${API_BASE}${shortsData.srt_url}`;
-
-        document.getElementById("videoPlayer").src = fullVideoUrl;
-        document.getElementById("videoLink").innerHTML =
-          `영상 파일: <a href="${fullVideoUrl}" target="_blank">${fullVideoUrl}</a>`;
-        document.getElementById("srtLink").innerHTML =
-          `자막 파일: <a href="${fullSrtUrl}" target="_blank">${fullSrtUrl}</a>`;
-
-        document.getElementById("videoBox").classList.remove("hidden");
-
-        setStatus(`영상 생성 완료! 사진 ${data.image_count || 0}장 사용됨`);
-      } catch (err) {
-        console.error(err);
-        alert("영상 생성 실패: " + err.message);
-        setStatus("영상 생성 실패");
-      } finally {
-        setLoading("videoBtn", false, "3. 영상 만들기");
-      }
+    function escapeHtml(text) {
+      return text
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
     }
   </script>
 </body>
