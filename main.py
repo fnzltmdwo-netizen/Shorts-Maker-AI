@@ -47,7 +47,8 @@ class SRTRequest(BaseModel):
 
 class VideoRequest(BaseModel):
     audio_url: str
-    captions: list[str]
+    captions: list[str] = []
+    tts_text: str | None = None
 
 
 @app.get("/")
@@ -165,8 +166,8 @@ def make_shorts(req: ShortsRequest):
 - 조회수 포인트 5개
 - 댓글 유도 2개
 - strong_version은 hook를 더 강하게 재작성
-- captions는 짧은 자막 6~8개
-- tts_text는 음성용 텍스트
+- captions는 tts_text를 짧게 나눈 문장으로 6~8개 생성
+- tts_text는 formatted_script의 실제 대본 문장만 자연스럽게 이어붙인 음성용 텍스트
 
 원문:
 {req.source_text}
@@ -300,13 +301,52 @@ def get_font(size=84):
         return ImageFont.load_default()
 
 
+def split_tts_to_captions(tts_text: str):
+    if not tts_text:
+        return []
+
+    text = re.sub(r"\s+", " ", tts_text).strip()
+
+    parts = re.split(r"(?<=[.!?。！？]|습니다|합니다|했습니다|됐습니다|있습니다|입니다|는데요|나요|까요)\s*", text)
+    parts = [p.strip() for p in parts if p and p.strip()]
+
+    captions = []
+
+    for part in parts:
+        if len(part) <= 22:
+            captions.append(part)
+        else:
+            chunks = re.findall(r".{1,18}(?:\s|$)", part)
+            for chunk in chunks:
+                chunk = chunk.strip()
+                if chunk:
+                    captions.append(chunk)
+
+    merged = []
+    buffer = ""
+
+    for cap in captions:
+        if not buffer:
+            buffer = cap
+        elif len(buffer + " " + cap) <= 24:
+            buffer += " " + cap
+        else:
+            merged.append(buffer)
+            buffer = cap
+
+    if buffer:
+        merged.append(buffer)
+
+    return merged[:12]
+
+
 def make_caption_image(text, output_path):
     width, height = 720, 1280
 
     img = Image.new("RGB", (width, height), color=(25, 25, 25))
     draw = ImageDraw.Draw(img)
 
-    font = get_font(84)
+    font = get_font(76)
 
     clean_text = re.sub(r"\s+", " ", text).strip()
     wrapped = textwrap.fill(clean_text, width=8)
@@ -352,9 +392,6 @@ def make_video(req: VideoRequest):
     if not req.audio_url:
         raise HTTPException(status_code=400, detail="audio_url이 없습니다.")
 
-    if not req.captions:
-        raise HTTPException(status_code=400, detail="captions가 없습니다.")
-
     if not shutil.which("ffmpeg"):
         raise HTTPException(status_code=500, detail="서버에 ffmpeg가 없습니다.")
 
@@ -365,6 +402,14 @@ def make_video(req: VideoRequest):
         if not os.path.exists(audio_path):
             raise HTTPException(status_code=404, detail="음성 파일을 찾을 수 없습니다.")
 
+        video_captions = split_tts_to_captions(req.tts_text or "")
+
+        if not video_captions:
+            video_captions = req.captions
+
+        if not video_captions:
+            raise HTTPException(status_code=400, detail="영상 자막으로 만들 텍스트가 없습니다.")
+
         file_id = str(uuid.uuid4())
         work_dir = os.path.join(VIDEO_DIR, file_id)
         os.makedirs(work_dir, exist_ok=True)
@@ -373,11 +418,11 @@ def make_video(req: VideoRequest):
         concat_path = os.path.join(work_dir, "concat.txt")
 
         audio_duration = get_audio_duration(audio_path)
-        caption_duration = max(1.5, audio_duration / len(req.captions))
+        caption_duration = max(1.2, audio_duration / len(video_captions))
 
         image_paths = []
 
-        for i, caption in enumerate(req.captions):
+        for i, caption in enumerate(video_captions):
             img_path = os.path.join(work_dir, f"frame_{i}.png")
             make_caption_image(caption, img_path)
             image_paths.append(img_path)
@@ -414,7 +459,10 @@ def make_video(req: VideoRequest):
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"ffmpeg 오류: {result.stderr[-1000:]}")
 
-        return {"video_url": f"/video/{file_id}.mp4"}
+        return {
+            "video_url": f"/video/{file_id}.mp4",
+            "video_captions": video_captions
+        }
 
     except HTTPException:
         raise
