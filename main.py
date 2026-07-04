@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from openai import OpenAI
 import os
 import re
 import uuid
@@ -19,8 +20,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
+
+openai_client = OpenAI(api_key=OPENAI_API_KEY)
 
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "outputs"
@@ -109,9 +113,101 @@ def seconds_to_srt_time(seconds: float) -> str:
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
     secs = int(seconds % 60)
-    millis = int((seconds - int(seconds)) * 1000)
+    millis = int(round((seconds - int(seconds)) * 1000))
 
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
+
+
+def fallback_big_caption(text: str) -> str:
+    text = text.strip()
+
+    if len(text) <= 7:
+        return text
+
+    words = text.split()
+    lines = []
+    current = ""
+
+    for word in words:
+        candidate = current + word if not current else current + " " + word
+
+        if len(candidate.replace(" ", "")) <= 8:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+
+    if current:
+        lines.append(current)
+
+    if len(lines) <= 4:
+        return "\n".join(lines)
+
+    compact = text.replace(" ", "")
+    new_lines = []
+    for i in range(0, len(compact), 7):
+        new_lines.append(compact[i:i + 7])
+
+    return "\n".join(new_lines[:4])
+
+
+def ai_big_caption(text: str) -> str:
+    if not OPENAI_API_KEY:
+        return fallback_big_caption(text)
+
+    prompt = f"""
+아래 문장을 유튜브 쇼츠용 큰 자막으로 줄바꿈해줘.
+
+조건:
+- 의미 단위로 자연스럽게 끊기
+- 2~4줄
+- 한 줄은 최대 9글자 정도
+- 따옴표 금지
+- 설명 금지
+- 오직 줄바꿈된 자막만 출력
+
+문장:
+{text}
+"""
+
+    try:
+        response = openai_client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[
+                {"role": "system", "content": "너는 한국 유튜브 쇼츠 자막 편집 전문가다."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0.2,
+        )
+
+        caption = response.choices[0].message.content.strip()
+        caption = caption.replace('"', "").replace("“", "").replace("”", "")
+        caption = re.sub(r"\n{3,}", "\n", caption)
+
+        lines = [line.strip() for line in caption.split("\n") if line.strip()]
+
+        if not lines:
+            return fallback_big_caption(text)
+
+        if len(lines) > 4:
+            return fallback_big_caption(text)
+
+        return "\n".join(lines)
+
+    except Exception:
+        return fallback_big_caption(text)
+
+
+def add_ai_captions(blocks):
+    new_blocks = []
+
+    for block in blocks:
+        copied = dict(block)
+        copied["big_caption"] = ai_big_caption(block["text"])
+        new_blocks.append(copied)
+
+    return new_blocks
 
 
 def create_srt(blocks, srt_path: Path):
@@ -120,7 +216,7 @@ def create_srt(blocks, srt_path: Path):
     for index, block in enumerate(blocks, start=1):
         start = seconds_to_srt_time(block["start"])
         end = seconds_to_srt_time(block["end"])
-        text = block["text"]
+        text = block.get("big_caption") or fallback_big_caption(block["text"])
 
         lines.append(str(index))
         lines.append(f"{start} --> {end}")
@@ -128,6 +224,17 @@ def create_srt(blocks, srt_path: Path):
         lines.append("")
 
     srt_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def create_big_caption_txt(blocks, txt_path: Path):
+    lines = []
+
+    for index, block in enumerate(blocks, start=1):
+        lines.append(f"{index}.")
+        lines.append(block.get("big_caption") or fallback_big_caption(block["text"]))
+        lines.append("")
+
+    txt_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def generate_elevenlabs_mp3(text: str, output_path: Path):
@@ -168,10 +275,35 @@ def create_script_txt(blocks, txt_path: Path):
 
     for index, block in enumerate(blocks, start=1):
         lines.append(f"{index}. {block['start']}~{block['end']}초")
-        lines.append(block["text"])
+        lines.append(f"원문: {block['text']}")
+        lines.append("큰자막:")
+        lines.append(block.get("big_caption") or fallback_big_caption(block["text"]))
         lines.append("")
 
     txt_path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def create_caption_style_txt(style_path: Path):
+    lines = [
+        "프리미어 자막 스타일 추천",
+        "",
+        "폰트: 눈누 기초고딕 Bold / Pretendard ExtraBold / Noto Sans KR Black",
+        "크기: 280~340",
+        "색상: 노란색 #FFF200",
+        "정렬: 가운데 정렬",
+        "위치: 화면 정중앙",
+        "Stroke: ON",
+        "Stroke 색상: 검정",
+        "Stroke 두께: 12~18",
+        "Background: OFF 추천",
+        "Shadow: ON",
+        "Shadow 색상: 검정",
+        "Shadow Opacity: 70~90%",
+        "Shadow Blur: 0~5",
+        "Shadow Distance: 6~10",
+    ]
+
+    style_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def create_guide_txt(blocks, guide_path: Path):
@@ -180,14 +312,17 @@ def create_guide_txt(blocks, guide_path: Path):
     lines.append("")
     lines.append("1. mp3 파일을 1번부터 순서대로 A1 트랙에 배치")
     lines.append("2. subtitles.srt 파일을 프리미어 자막으로 가져오기")
-    lines.append("3. 각 구간에 맞는 사진을 V1 트랙에 배치")
+    lines.append("3. captions_big.txt를 참고해서 큰 자막 스타일 적용")
+    lines.append("4. 각 구간에 맞는 사진을 V1 트랙에 배치")
     lines.append("")
     lines.append("컷 구성")
     lines.append("")
 
     for index, block in enumerate(blocks, start=1):
         lines.append(f"컷 {index}: {block['start']}~{block['end']}초")
-        lines.append(f"자막: {block['text']}")
+        lines.append(f"원문: {block['text']}")
+        lines.append("큰자막:")
+        lines.append(block.get("big_caption") or fallback_big_caption(block["text"]))
         lines.append("추천 이미지: 관련 인물 사진 / 표정 클로즈업 / 방송 캡처")
         lines.append("")
 
@@ -203,6 +338,8 @@ def parse_script_api(request: ScriptRequest):
 
     if not blocks:
         raise HTTPException(status_code=400, detail="시간 형식을 찾지 못했습니다.")
+
+    blocks = add_ai_captions(blocks)
 
     return {
         "count": len(blocks),
@@ -220,6 +357,8 @@ def generate_pack(request: ScriptRequest):
     if not blocks:
         raise HTTPException(status_code=400, detail="시간 형식을 찾지 못했습니다.")
 
+    blocks = add_ai_captions(blocks)
+
     job_id = str(uuid.uuid4())[:8]
     job_dir = OUTPUT_DIR / job_id
     job_dir.mkdir(exist_ok=True)
@@ -229,7 +368,9 @@ def generate_pack(request: ScriptRequest):
         generate_elevenlabs_mp3(block["text"], mp3_path)
 
     create_srt(blocks, job_dir / "subtitles.srt")
+    create_big_caption_txt(blocks, job_dir / "captions_big.txt")
     create_script_txt(blocks, job_dir / "script.txt")
+    create_caption_style_txt(job_dir / "caption_style.txt")
     create_guide_txt(blocks, job_dir / "premiere_guide.txt")
 
     zip_path = OUTPUT_DIR / f"premiere_pack_{job_id}.zip"
