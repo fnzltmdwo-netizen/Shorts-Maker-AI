@@ -26,6 +26,7 @@ DEFAULT_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 AUDIO_DIR = "audios"
 SRT_DIR = "srts"
 VIDEO_DIR = "videos"
+
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(SRT_DIR, exist_ok=True)
 os.makedirs(VIDEO_DIR, exist_ok=True)
@@ -64,19 +65,20 @@ def make_shorts(req: ShortsRequest):
 너는 한국 유튜브 쇼츠 전문 작가다.
 특히 연예뉴스, 트로트, 예능, 팬덤형 쇼츠를 잘 만든다.
 
-목표는 '뉴스 요약'이 아니라,
+목표는 뉴스 요약이 아니라,
 사람들이 끝까지 보게 만드는 30초 쇼츠 대본 제작이다.
 
-[대본 스타일]
-- 친구가 연예계 썰 풀어주는 느낌
-- 기사체 금지
-- 뉴스 앵커 말투 금지
-- 문장은 짧게
-- 한 구간당 1~2문장
-- 자막처럼 줄바꿈
-- "~는데요", "심지어", "근데", "하지만" 같은 쇼츠 말투 사용
-- 원문에 없는 사실은 만들지 말 것
-- 루머/논란은 단정하지 말 것
+[말투 규칙]
+- 기본 종결어미는 반드시 "~습니다", "~합니다", "~했습니다"를 사용한다.
+- "~는데요"는 한 대본에서 최대 1번만 사용한다.
+- "했어요", "나왔어요", "보냈어요", "됐어요", "있었네요" 같은 말투는 절대 금지한다.
+- 뉴스 쇼츠처럼 깔끔하고 힘 있는 문장으로 작성한다.
+- 기사체는 금지하지만, 너무 가벼운 말투도 금지한다.
+- 문장은 짧게 작성한다.
+- 한 구간당 1~2문장만 작성한다.
+- 자막처럼 줄바꿈한다.
+- 원문에 없는 사실은 만들지 않는다.
+- 루머, 열애, 논란은 단정하지 않는다.
 
 [반드시 이 형식]
 🎬 쇼츠 대본 (유형명 🔥)
@@ -110,26 +112,26 @@ def make_shorts(req: ShortsRequest):
 
 2~6초
 "현역가왕 역대 가왕들이
-드디어 총출동하는데요"
+드디어 총출동합니다."
 
 6~11초
 "새 음악 예능
-가왕쇼가 올 하반기 공개를 확정했습니다"
+가왕쇼가 올 하반기 공개를 확정했습니다."
 
 11~16초
 "전유진, 박서진, 홍지윤이
-MC를 맡고 각 시즌 TOP7까지 합류하는데요"
+MC를 맡고 각 시즌 TOP7까지 합류합니다."
 
 16~21초
 "초호화 라인업이 공개되며
-팬들의 기대가 커지고 있습니다"
+팬들의 기대가 커지고 있습니다."
 
 21~26초
 "센터 자리를 두고
-치열한 맞대결도 펼쳐질 예정인데요"
+치열한 맞대결도 펼쳐질 예정입니다."
 
 26~31초 (댓글 유도)
-"여러분이 생각하는 최종 1위는 누구인가요?"
+"여러분이 생각하는 최종 1위는 누구입니까?"
 
 [추가 출력물]
 - 제목 5개
@@ -139,6 +141,7 @@ MC를 맡고 각 시즌 TOP7까지 합류하는데요"
 - 댓글 유도 2개
 - 더 강한 조회수 버전 1개
 - tts_text는 따옴표, 시간표시 없이 자연스럽게 읽을 대본만 이어붙이기
+- captions는 영상 자막용으로 짧게 6~8개 생성
 
 원문:
 {req.source_text}
@@ -162,12 +165,16 @@ MC를 맡고 각 시즌 TOP7까지 합류하는데요"
         response = openai_client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": "너는 한국 유튜브 쇼츠 대본 제작 전문가다. JSON만 출력한다."},
+                {
+                    "role": "system",
+                    "content": "너는 한국 유튜브 쇼츠 대본 제작 전문가다. 반드시 JSON만 출력한다.",
+                },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.65,
+            temperature=0.55,
             response_format={"type": "json_object"},
         )
+
         return json.loads(response.choices[0].message.content)
 
     except Exception as e:
@@ -264,7 +271,7 @@ def make_srt(req: SRTRequest):
         raise HTTPException(status_code=500, detail=f"SRT 생성 실패: {str(e)}")
 
 
-def get_font(size=58):
+def get_font(size=62):
     font_paths = [
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
@@ -348,7 +355,6 @@ def make_video(req: VideoRequest):
             fps=24,
             preset="ultrafast",
             threads=2,
-            verbose=False,
             logger=None,
         )
 
