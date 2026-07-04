@@ -115,13 +115,17 @@ def seconds_to_srt_time(seconds: float) -> str:
     secs = int(seconds % 60)
     millis = int(round((seconds - int(seconds)) * 1000))
 
+    if millis >= 1000:
+        millis = 0
+        secs += 1
+
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
 
 
 def fallback_big_caption(text: str) -> str:
     text = text.strip()
 
-    if len(text) <= 7:
+    if len(text) <= 8:
         return text
 
     words = text.split()
@@ -129,9 +133,9 @@ def fallback_big_caption(text: str) -> str:
     current = ""
 
     for word in words:
-        candidate = current + word if not current else current + " " + word
+        candidate = word if not current else current + " " + word
 
-        if len(candidate.replace(" ", "")) <= 8:
+        if len(candidate.replace(" ", "")) <= 9:
             current = candidate
         else:
             if current:
@@ -141,15 +145,16 @@ def fallback_big_caption(text: str) -> str:
     if current:
         lines.append(current)
 
-    if len(lines) <= 4:
+    if 2 <= len(lines) <= 4:
         return "\n".join(lines)
 
     compact = text.replace(" ", "")
-    new_lines = []
-    for i in range(0, len(compact), 7):
-        new_lines.append(compact[i:i + 7])
+    lines = []
 
-    return "\n".join(new_lines[:4])
+    for i in range(0, len(compact), 8):
+        lines.append(compact[i:i + 8])
+
+    return "\n".join(lines[:4])
 
 
 def ai_big_caption(text: str) -> str:
@@ -175,7 +180,10 @@ def ai_big_caption(text: str) -> str:
         response = openai_client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": "너는 한국 유튜브 쇼츠 자막 편집 전문가다."},
+                {
+                    "role": "system",
+                    "content": "너는 한국 유튜브 쇼츠 자막 편집 전문가다.",
+                },
                 {"role": "user", "content": prompt},
             ],
             temperature=0.2,
