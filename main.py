@@ -3,9 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
-import os
-import json
-import uuid
+import os, json, uuid
 
 app = FastAPI()
 
@@ -25,14 +23,12 @@ os.makedirs(AUDIO_DIR, exist_ok=True)
 
 class ShortsRequest(BaseModel):
     source_text: str
-    tone: str = "연예뉴스"
-    length: str = "60초"
-    style: str = "자극적이지만 선 넘지 않게"
+    tone: str = "초대형 라인업형"
 
 
 class TTSRequest(BaseModel):
     text: str
-    voice: str = "alloy"
+    voice: str = "nova"
 
 
 @app.get("/")
@@ -46,34 +42,50 @@ def make_shorts(req: ShortsRequest):
         raise HTTPException(status_code=400, detail="내용을 입력해주세요.")
 
     prompt = f"""
-너는 유튜브 쇼츠 전문 작가야.
+너는 한국 유튜브 쇼츠 전문 작가야.
+특히 연예뉴스, 트로트, 팬덤형 쇼츠를 잘 만든다.
 
-아래 원문을 바탕으로 유튜브 쇼츠용 콘텐츠를 만들어줘.
+아래 원문을 바탕으로 유튜브 쇼츠 편집용 원고를 만들어줘.
 
-조건:
-- 톤: {req.tone}
-- 길이: {req.length}
-- 스타일: {req.style}
-- 한국어
-- 초반 3초 훅 강하게
-- 허위사실처럼 단정하지 말 것
-- 명예훼손/악성 루머처럼 보이지 않게 표현
-- 사람이 읽었을 때 자연스럽게
-- TTS로 읽기 좋게 짧은 문장 위주
+중요한 스타일:
+- 시간대별로 나눠줘: 0~2초, 2~6초 이런 식
+- 첫 문장은 강한 훅
+- 문장은 짧게
+- 실제 쇼츠 자막처럼 줄바꿈
+- 팬덤 댓글 싸움이 생기게 질문 넣기
+- 너무 루머처럼 단정하지 말기
+- 조회수 포인트도 따로 정리
+- 제목은 5개 만들고 추천 제목도 따로
+- 썸네일 문구 3개
+- 댓글 유도 문장 2개
+- 더 강한 조회수 버전도 추가
 
 원문:
 {req.source_text}
 
-반드시 아래 JSON 형식으로만 답해줘.
+반드시 아래 JSON 형식으로만 답해.
 
 {{
-  "title": "쇼츠 제목",
-  "hook": "첫 3초 훅",
-  "script": "전체 쇼츠 대본",
-  "captions": ["자막1", "자막2", "자막3"],
-  "thumbnail_text": "썸네일 문구",
-  "hashtags": ["#해시태그1", "#해시태그2"],
-  "image_prompts": ["장면1 이미지 프롬프트", "장면2 이미지 프롬프트"]
+  "main_title": "🎬 숏츠 대본 제목",
+  "script_sections": [
+    {{
+      "time": "0~2초",
+      "label": "훅",
+      "text": "대사"
+    }}
+  ],
+  "titles": ["제목1", "제목2", "제목3", "제목4", "제목5"],
+  "recommended_title": "추천 제목",
+  "thumbnail_texts": ["썸네일1", "썸네일2", "썸네일3"],
+  "view_points": ["조회수 포인트1", "조회수 포인트2"],
+  "comment_hooks": ["댓글유도1", "댓글유도2"],
+  "strong_version": [
+    {{
+      "time": "0~2초",
+      "text": "강한 버전 대사"
+    }}
+  ],
+  "tts_text": "AI 음성으로 읽을 전체 대본"
 }}
 """
 
@@ -84,12 +96,11 @@ def make_shorts(req: ShortsRequest):
                 {"role": "system", "content": "너는 유튜브 쇼츠 대본 제작 전문가다."},
                 {"role": "user", "content": prompt}
             ],
-            temperature=0.8
+            temperature=0.9,
+            response_format={"type": "json_object"}
         )
 
-        content = response.choices[0].message.content
-        data = json.loads(content)
-        return data
+        return json.loads(response.choices[0].message.content)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"AI 생성 실패: {str(e)}")
@@ -111,9 +122,7 @@ def make_tts(req: TTSRequest):
         ) as response:
             response.stream_to_file(file_path)
 
-        return {
-            "audio_url": f"/audio/{file_id}.mp3"
-        }
+        return {"audio_url": f"/audio/{file_id}.mp3"}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS 생성 실패: {str(e)}")
