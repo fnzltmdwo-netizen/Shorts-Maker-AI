@@ -285,7 +285,7 @@ def generate_voice(req: VoiceRequest):
         data = r.json()
 
         audio_base64 = data.get("audio_base64")
-        alignment = data.get("normalized_alignment") or data.get("alignment")
+        alignment = data.get("alignment") or data.get("normalized_alignment")
 
         if not audio_base64:
             raise Exception("audio_base64가 없습니다.")
