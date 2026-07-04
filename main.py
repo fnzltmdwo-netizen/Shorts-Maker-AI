@@ -4,9 +4,8 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont
-from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
 
-import os, json, uuid, requests, re, textwrap
+import os, json, uuid, requests, re, textwrap, subprocess, shutil
 
 app = FastAPI()
 
@@ -73,8 +72,6 @@ def make_shorts(req: ShortsRequest):
 2. 감정/반전
 3. 댓글 유도
 
-반드시 이를 지켜라.
-
 [핵심 스타일]
 - 친구가 흥미로운 연예계 썰을 풀어주는 느낌
 - 첫 2초 안에 반드시 시청자를 붙잡아야 한다
@@ -82,7 +79,6 @@ def make_shorts(req: ShortsRequest):
 - 문장은 짧고 강하게
 - 자막처럼 줄바꿈
 - 감정, 반전, 궁금증 적극 활용
-- “어?” “왜?” “헉?” 같은 심리 유발
 
 [말투 규칙]
 - 너무 딱딱한 기사체 금지
@@ -99,26 +95,12 @@ def make_shorts(req: ShortsRequest):
 - OOO가 춤을 췄습니다
 - OOO가 영상을 올렸습니다
 
-너무 평범해서 실패다.
-
-[훅 규칙 - 가장 중요]
+[훅 규칙]
 첫 문장은 반드시 아래 4개 중 하나:
-
 1. 충격형
-예:
-"전유진이 결국 입을 열었습니다."
-
 2. 반전형
-예:
-"근데 여기서 반전이 나왔습니다."
-
 3. 궁금증형
-예:
-"팬들이 난리 난 이유가 있었습니다."
-
 4. 감정형
-예:
-"모두가 울컥한 순간이었습니다."
 
 [연성 기사 hook 예시]
 - 팬들이 난리 난 이유가 있었습니다.
@@ -146,58 +128,7 @@ def make_shorts(req: ShortsRequest):
 
 23~28초 (댓글 유도)
 
-[구간별 규칙]
-
-0~2초:
-무조건 strongest hook
-
-2~18초:
-핵심 내용 전개
-
-18~23초:
-반전 / 감정 / 핵심 포인트
-
-23~28초:
-댓글 유도
-
-[댓글 유도 예시]
-- 여러분은 어떻게 보시나요?
-- 여러분 생각은 어떻습니까?
-- 여러분도 같은 생각이신가요?
-- 누가 더 눈에 들어오셨나요?
-- 여러분의 최애는 누구인가요?
-
-[좋은 예시 1]
-
-🎬 쇼츠 대본 (초대형 라인업형 🔥)
-
-0~2초 (훅)
-"전유진, 박서진, 홍지윤이 한자리에 모입니다."
-
-2~6초
-"현역가왕 역대 가왕들이
-드디어 총출동하는데요"
-
-6~10초
-"새 음악 예능
-가왕쇼가 공개를 확정했습니다"
-
-10~14초
-"역대 가왕 3인이
-직접 MC까지 맡았습니다"
-
-14~18초
-"각 시즌 TOP7까지 합류하면서
-라인업이 폭발했습니다"
-
-18~23초
-"심지어 센터 자리를 두고
-치열한 경쟁도 예고됐습니다"
-
-23~28초 (댓글 유도)
-"여러분의 최애는 누구인가요?"
-
-[좋은 예시 2]
+[좋은 예시]
 
 🎬 쇼츠 대본 (연성 기사형 🔥)
 
@@ -259,10 +190,7 @@ def make_shorts(req: ShortsRequest):
         response = openai_client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {
-                    "role": "system",
-                    "content": "너는 한국 유튜브 쇼츠 대본 제작 전문가다. 반드시 JSON만 출력한다.",
-                },
+                {"role": "system", "content": "너는 한국 유튜브 쇼츠 대본 제작 전문가다. 반드시 JSON만 출력한다."},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.82,
@@ -365,7 +293,7 @@ def make_srt(req: SRTRequest):
         raise HTTPException(status_code=500, detail=f"SRT 생성 실패: {str(e)}")
 
 
-def get_font(size=62):
+def get_font(size=48):
     font_paths = [
         "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
         "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
@@ -380,15 +308,15 @@ def get_font(size=62):
 
 
 def make_caption_image(text, output_path):
-    width, height = 1080, 1920
+    width, height = 720, 1280
     img = Image.new("RGB", (width, height), color=(0, 0, 0))
     draw = ImageDraw.Draw(img)
 
-    font = get_font(62)
+    font = get_font(48)
     clean_text = re.sub(r"\s+", " ", text).strip()
-    wrapped = textwrap.fill(clean_text, width=13)
+    wrapped = textwrap.fill(clean_text, width=12)
 
-    bbox = draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=18)
+    bbox = draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=16)
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
 
@@ -400,11 +328,28 @@ def make_caption_image(text, output_path):
         wrapped,
         font=font,
         fill=(255, 255, 255),
-        spacing=18,
+        spacing=16,
         align="center",
+        stroke_width=2,
+        stroke_fill=(0, 0, 0),
     )
 
     img.save(output_path)
+
+
+def get_audio_duration(audio_path):
+    try:
+        cmd = [
+            "ffprobe",
+            "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
+            audio_path,
+        ]
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
+        return float(result.stdout.strip())
+    except Exception:
+        return 28.0
 
 
 @app.post("/make-video")
@@ -415,6 +360,9 @@ def make_video(req: VideoRequest):
     if not req.captions:
         raise HTTPException(status_code=400, detail="captions가 없습니다.")
 
+    if not shutil.which("ffmpeg"):
+        raise HTTPException(status_code=500, detail="서버에 ffmpeg가 없습니다.")
+
     try:
         filename = req.audio_url.split("/")[-1]
         audio_path = os.path.join(AUDIO_DIR, filename)
@@ -423,37 +371,53 @@ def make_video(req: VideoRequest):
             raise HTTPException(status_code=404, detail="음성 파일을 찾을 수 없습니다.")
 
         file_id = str(uuid.uuid4())
+        work_dir = os.path.join(VIDEO_DIR, file_id)
+        os.makedirs(work_dir, exist_ok=True)
+
         video_path = os.path.join(VIDEO_DIR, f"{file_id}.mp4")
+        concat_path = os.path.join(work_dir, "concat.txt")
 
-        audio = AudioFileClip(audio_path)
-        total_duration = audio.duration
-        caption_duration = total_duration / len(req.captions)
+        audio_duration = get_audio_duration(audio_path)
+        caption_duration = max(1.5, audio_duration / len(req.captions))
 
-        clips = []
+        image_paths = []
 
         for i, caption in enumerate(req.captions):
-            img_path = os.path.join(VIDEO_DIR, f"{file_id}_{i}.png")
+            img_path = os.path.join(work_dir, f"frame_{i}.png")
             make_caption_image(caption, img_path)
+            image_paths.append(img_path)
 
-            clip = ImageClip(img_path).with_duration(caption_duration)
-            clips.append(clip)
+        with open(concat_path, "w", encoding="utf-8") as f:
+            for img_path in image_paths:
+                f.write(f"file '{os.path.abspath(img_path)}'\n")
+                f.write(f"duration {caption_duration}\n")
+            f.write(f"file '{os.path.abspath(image_paths[-1])}'\n")
 
-        video = concatenate_videoclips(clips, method="compose")
-        video = video.with_audio(audio)
-        video = video.with_fps(24)
-
-        video.write_videofile(
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-f", "concat",
+            "-safe", "0",
+            "-i", concat_path,
+            "-i", audio_path,
+            "-vf", "scale=720:1280,fps=24,format=yuv420p",
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-c:a", "aac",
+            "-b:a", "128k",
+            "-shortest",
             video_path,
-            codec="libx264",
-            audio_codec="aac",
-            fps=24,
-            preset="ultrafast",
-            threads=2,
-            logger=None,
+        ]
+
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=180,
         )
 
-        audio.close()
-        video.close()
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"ffmpeg 오류: {result.stderr[-1000:]}")
 
         return {"video_url": f"/video/{file_id}.mp4"}
 
