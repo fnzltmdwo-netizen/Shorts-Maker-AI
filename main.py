@@ -295,7 +295,8 @@ def make_image_background_video(image_paths, duration, output_path):
         )
 
         if result.returncode != 0:
-            raise Exception(f"이미지 배경 세그먼트 생성 실패: {result.stderr}")
+            error_tail = "\n".join(result.stderr.splitlines()[-20:])
+            raise Exception(f"이미지 배경 세그먼트 생성 실패:\n{error_tail}")
 
     concat_list_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_concat.txt")
 
@@ -325,7 +326,8 @@ def make_image_background_video(image_paths, duration, output_path):
     )
 
     if result.returncode != 0:
-        raise Exception(f"이미지 배경 concat 실패: {result.stderr}")
+        error_tail = "\n".join(result.stderr.splitlines()[-20:])
+        raise Exception(f"이미지 배경 concat 실패:\n{error_tail}")
 
     return output_path
 
