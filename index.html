@@ -3,228 +3,264 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>쇼츠 대본 자동 생성기</title>
+<title>AI 쇼츠 메이커</title>
 
 <style>
-body {
-  margin: 0;
-  background: #f4f6ff;
-  font-family: Arial, sans-serif;
+body{
+  margin:0;
+  background:#f4f6ff;
+  font-family:Arial,sans-serif;
 }
-
-.container {
-  max-width: 900px;
-  margin: 30px auto;
-  background: white;
-  padding: 30px;
-  border-radius: 18px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+.container{
+  max-width:1000px;
+  margin:30px auto;
+  background:white;
+  padding:30px;
+  border-radius:18px;
+  box-shadow:0 4px 20px rgba(0,0,0,.08);
 }
-
-h1 {
-  text-align: center;
+h1{text-align:center}
+textarea,select{
+  width:100%;
+  box-sizing:border-box;
+  padding:14px;
+  border-radius:12px;
+  border:1px solid #ddd;
+  margin-top:8px;
 }
-
-textarea, select {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 14px;
-  border-radius: 12px;
-  border: 1px solid #ddd;
-  margin-top: 8px;
+textarea{min-height:220px}
+button{
+  width:100%;
+  padding:16px;
+  margin-top:16px;
+  border:none;
+  border-radius:14px;
+  background:#4f63ff;
+  color:white;
+  font-size:18px;
+  cursor:pointer;
 }
-
-textarea {
-  min-height: 200px;
+.card{
+  background:#f7f8ff;
+  border-radius:16px;
+  padding:20px;
+  margin-top:20px;
 }
-
-button {
-  width: 100%;
-  padding: 16px;
-  margin-top: 20px;
-  background: #4f63ff;
-  color: white;
-  border: none;
-  border-radius: 14px;
-  font-size: 18px;
-  cursor: pointer;
+pre{
+  white-space:pre-wrap;
+  line-height:1.6;
 }
-
-.card {
-  background: #f7f8ff;
-  border-radius: 16px;
-  padding: 20px;
-  margin-top: 20px;
+.loading{
+  display:none;
+  text-align:center;
+  margin-top:20px;
+  font-weight:bold;
 }
-
-pre {
-  white-space: pre-wrap;
+.result{
+  display:none;
 }
-
-.loading {
-  display: none;
-  text-align: center;
-  margin-top: 20px;
-  font-weight: bold;
+audio{
+  width:100%;
+  margin-top:20px;
 }
-
-.result {
-  display: none;
-}
-
-.copy-btn {
-  margin-top: 10px;
-  width: auto;
-  padding: 10px 14px;
-  background: black;
-  font-size: 14px;
-}
-
-audio {
-  display: block;
-  margin-top: 20px;
-  width: 100%;
+.action-btn{
+  width:auto;
+  padding:12px 18px;
+  font-size:14px;
+  margin-right:10px;
 }
 </style>
 </head>
 
 <body>
 <div class="container">
-  <h1>🎬 쇼츠 자동 생성기</h1>
+  <h1>🎬 AI 쇼츠 메이커</h1>
 
   <textarea id="sourceText" placeholder="기사 붙여넣기"></textarea>
 
   <select id="tone">
-    <option>연예뉴스</option>
-    <option>사건사고</option>
-    <option>논란정리</option>
+    <option>초대형 라인업형</option>
+    <option>팬덤 싸움형</option>
+    <option>논란 폭발형</option>
   </select>
 
-  <button onclick="generateShorts()">쇼츠 대본 만들기</button>
+  <button onclick="generateShorts()">쇼츠 생성</button>
 
-  <div class="loading" id="loading">생성 중...</div>
+  <div class="loading" id="loading">AI가 쇼츠 만드는 중...</div>
 
   <div class="result" id="result">
+
     <div class="card">
-      <h2>제목</h2>
-      <pre id="title"></pre>
+      <h2>🎬 숏츠 대본</h2>
+      <pre id="formatted_script"></pre>
     </div>
 
     <div class="card">
-      <h2>훅</h2>
-      <pre id="hook"></pre>
+      <h2>🔥 제목 후보</h2>
+      <pre id="titles"></pre>
     </div>
 
     <div class="card">
-      <h2>대본</h2>
-      <pre id="script"></pre>
-      <button class="copy-btn" onclick="makeTTS()">AI 음성 만들기</button>
+      <h2>🏆 추천 제목</h2>
+      <pre id="recommended_title"></pre>
     </div>
 
     <div class="card">
-      <h2>썸네일</h2>
-      <pre id="thumbnail"></pre>
+      <h2>🖼 썸네일 문구</h2>
+      <pre id="thumbnail_texts"></pre>
     </div>
 
     <div class="card">
-      <h2>해시태그</h2>
-      <pre id="hashtags"></pre>
+      <h2>📈 조회수 포인트</h2>
+      <pre id="view_points"></pre>
     </div>
+
+    <div class="card">
+      <h2>💬 댓글 유도</h2>
+      <pre id="comment_hooks"></pre>
+    </div>
+
+    <div class="card">
+      <h2>💣 강한 버전</h2>
+      <pre id="strong_version"></pre>
+    </div>
+
+    <div class="card">
+      <h2>🎙 음성 / 자막</h2>
+      <button class="action-btn" onclick="makeTTS()">AI 음성 만들기</button>
+      <button class="action-btn" onclick="makeSRT()">SRT 만들기</button>
+      <div id="mediaArea"></div>
+    </div>
+
   </div>
 </div>
 
 <script>
-const API_URL = "https://shorts-maker-api.onrender.com";
+const API_URL="https://shorts-maker-api.onrender.com";
+let latestCaptions=[];
+let latestTTSText="";
 
-async function generateShorts() {
-  const sourceText = document.getElementById("sourceText").value.trim();
-  const tone = document.getElementById("tone").value;
+async function generateShorts(){
+    const sourceText=document.getElementById("sourceText").value.trim();
+    const tone=document.getElementById("tone").value;
 
-  if (!sourceText) {
-    alert("기사 입력해줘");
-    return;
-  }
-
-  document.getElementById("loading").style.display = "block";
-
-  try {
-    const res = await fetch(API_URL + "/make-shorts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        source_text: sourceText,
-        tone: tone
-      })
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "API 오류");
+    if(!sourceText){
+        alert("기사 입력해줘!");
+        return;
     }
 
-    const data = await res.json();
+    document.getElementById("loading").style.display="block";
 
-    document.getElementById("title").innerText = data.title || "";
-    document.getElementById("hook").innerText = data.hook || "";
-    document.getElementById("script").innerText = data.script || "";
-    document.getElementById("thumbnail").innerText = data.thumbnail_text || "";
-    document.getElementById("hashtags").innerText =
-      (data.hashtags || []).join(" ");
+    try{
+        const res=await fetch(API_URL+"/make-shorts",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                source_text:sourceText,
+                tone:tone
+            })
+        });
 
-    document.getElementById("result").style.display = "block";
+        if(!res.ok){
+            const err=await res.json();
+            throw new Error(err.detail || "API 오류");
+        }
 
-  } catch (err) {
-    alert("에러: " + err.message);
-  } finally {
-    document.getElementById("loading").style.display = "none";
-  }
+        const data=await res.json();
+
+        document.getElementById("formatted_script").innerText=data.formatted_script || "";
+        document.getElementById("titles").innerText=(data.titles || []).join("\n");
+        document.getElementById("recommended_title").innerText=data.recommended_title || "";
+        document.getElementById("thumbnail_texts").innerText=(data.thumbnail_texts || []).join("\n");
+        document.getElementById("view_points").innerText=(data.view_points || []).join("\n");
+        document.getElementById("comment_hooks").innerText=(data.comment_hooks || []).join("\n");
+        document.getElementById("strong_version").innerText=data.strong_version || "";
+
+        latestCaptions=data.captions || [];
+        latestTTSText=data.tts_text || "";
+
+        document.getElementById("result").style.display="block";
+
+    }catch(err){
+        alert(err.message);
+    }finally{
+        document.getElementById("loading").style.display="none";
+    }
 }
 
-async function makeTTS() {
-  const scriptText = document.getElementById("script").innerText;
-
-  if (!scriptText || scriptText.trim() === "") {
-    alert("먼저 대본 생성해줘");
-    return;
-  }
-
-  try {
-    const res = await fetch(API_URL + "/make-tts", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        text: scriptText,
-        voice: "nova"
-      })
-    });
-
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || "TTS 실패");
+async function makeTTS(){
+    if(!latestTTSText){
+        alert("먼저 쇼츠 생성해줘!");
+        return;
     }
 
-    const data = await res.json();
-    const audioUrl = API_URL + data.audio_url;
+    try{
+        const res=await fetch(API_URL+"/make-tts",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                text:latestTTSText
+            })
+        });
 
-    const oldAudio = document.getElementById("ttsPlayer");
-    if (oldAudio) oldAudio.remove();
+        const data=await res.json();
 
-    const audio = document.createElement("audio");
-    audio.id = "ttsPlayer";
-    audio.controls = true;
-    audio.src = audioUrl;
+        if(!res.ok){
+            throw new Error(data.detail || "TTS 실패");
+        }
 
-    document.getElementById("script")
-      .parentElement
-      .appendChild(audio);
+        const audio=document.createElement("audio");
+        audio.controls=true;
+        audio.src=API_URL + data.audio_url;
 
-  } catch (err) {
-    alert("TTS 실패: " + err.message);
-  }
+        const area=document.getElementById("mediaArea");
+        area.innerHTML="";
+        area.appendChild(audio);
+
+    }catch(err){
+        alert(err.message);
+    }
+}
+
+async function makeSRT(){
+    if(!latestCaptions.length){
+        alert("먼저 쇼츠 생성해줘!");
+        return;
+    }
+
+    try{
+        const res=await fetch(API_URL+"/make-srt",{
+            method:"POST",
+            headers:{
+                "Content-Type":"application/json"
+            },
+            body:JSON.stringify({
+                captions:latestCaptions
+            })
+        });
+
+        const data=await res.json();
+
+        if(!res.ok){
+            throw new Error(data.detail || "SRT 실패");
+        }
+
+        const link=document.createElement("a");
+        link.href=API_URL + data.srt_url;
+        link.innerText="SRT 다운로드";
+        link.target="_blank";
+        link.style.display="block";
+        link.style.marginTop="20px";
+
+        document.getElementById("mediaArea").appendChild(link);
+
+    }catch(err){
+        alert(err.message);
+    }
 }
 </script>
 </body>
