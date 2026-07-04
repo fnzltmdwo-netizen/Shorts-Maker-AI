@@ -116,36 +116,54 @@ def seconds_to_srt_time(seconds: float) -> str:
 def split_big_caption(text: str) -> str:
     words = text.split()
 
-    if len(words) <= 1:
+    if not words:
+        return text
+
+    if len(words) == 1:
         chars = list(text)
         lines = []
-        for i in range(0, len(chars), 8):
-            lines.append("".join(chars[i:i+8]))
+
+        for i in range(0, len(chars), 6):
+            lines.append("".join(chars[i:i + 6]))
+
         return "\n".join(lines[:4])
 
     lines = []
-    current = ""
+    current = words[0]
 
-    for word in words:
-        candidate = word if not current else current + " " + word
+    MIN_LEN = 5
+    MAX_LEN = 12
 
-        if len(candidate.replace(" ", "")) <= 9:
+    for word in words[1:]:
+        candidate = current + " " + word
+
+        if len(candidate) <= MAX_LEN:
             current = candidate
         else:
-            if current:
-                lines.append(current)
+            lines.append(current)
             current = word
 
     if current:
         lines.append(current)
 
     if len(lines) > 4:
-        compact = text.replace(" ", "")
-        lines = []
-        for i in range(0, len(compact), 8):
-            lines.append(compact[i:i+8])
+        total = len(words)
+        chunk_size = max(1, total // 3)
 
-    return "\n".join(lines[:4])
+        lines = []
+        for i in range(0, total, chunk_size):
+            chunk = words[i:i + chunk_size]
+            lines.append(" ".join(chunk))
+
+    balanced = []
+
+    for line in lines:
+        if balanced and len(line) < MIN_LEN:
+            balanced[-1] += " " + line
+        else:
+            balanced.append(line)
+
+    return "\n".join(balanced[:4])
 
 
 def add_captions(blocks):
