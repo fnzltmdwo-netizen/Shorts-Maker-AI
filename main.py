@@ -3,7 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
-import os, uuid, re, json, requests, subprocess, base64
+import os
+import uuid
+import re
+import json
+import requests
+import subprocess
+import base64
+import random
 
 app = FastAPI()
 
@@ -24,8 +31,10 @@ AUDIO_DIR = "audios"
 SRT_DIR = "srts"
 VIDEO_DIR = "videos"
 ALIGN_DIR = "alignments"
+IMAGE_DIR = "images"
+TEMP_DIR = "temp"
 
-for d in [AUDIO_DIR, SRT_DIR, VIDEO_DIR, ALIGN_DIR]:
+for d in [AUDIO_DIR, SRT_DIR, VIDEO_DIR, ALIGN_DIR, IMAGE_DIR, TEMP_DIR]:
     os.makedirs(d, exist_ok=True)
 
 
@@ -44,6 +53,7 @@ class VideoRequest(BaseModel):
     tts_text: str | None = ""
     voice_url: str
     alignment_url: str | None = ""
+    images: list[str] = []
 
 
 def clean_text(text: str) -> str:
@@ -63,19 +73,35 @@ def format_srt_time(seconds: float) -> str:
 def get_audio_duration(audio_path: str) -> float:
     result = subprocess.run(
         [
-            "ffprobe", "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
             audio_path,
         ],
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
     )
+
     try:
         return float(result.stdout.strip())
     except Exception:
         return 30.0
+
+
+def decode_base64_image(image_base64: str, save_path: str):
+    if "," in image_base64:
+        image_base64 = image_base64.split(",", 1)[1]
+
+    image_base64 = image_base64.strip()
+    image_bytes = base64.b64decode(image_base64)
+
+    with open(save_path, "wb") as f:
+        f.write(image_bytes)
 
 
 def make_srt_from_alignment(alignment: dict, srt_path: str, max_len: int = 15):
@@ -127,6 +153,7 @@ def make_srt_from_alignment(alignment: dict, srt_path: str, max_len: int = 15):
         })
 
     srt = ""
+
     for i, c in enumerate(chunks, start=1):
         start = c["start"]
         end = max(c["end"], start + 0.35)
@@ -147,6 +174,7 @@ def make_fallback_srt(tts_text: str, audio_duration: float, srt_path: str):
 
     for word in words:
         test = (cur + " " + word).strip()
+
         if len(test) <= 15:
             cur = test
         else:
@@ -184,9 +212,131 @@ def make_fallback_srt(tts_text: str, audio_duration: float, srt_path: str):
         f.write(srt)
 
 
+def make_image_background_video(image_paths, duration, output_path):
+    if not image_paths:
+        raise Exception("업로드된 이미지가 없습니다.")
+
+    segment_paths = []
+    per_image_duration = duration / len(image_paths)
+
+    effects = [
+        "zoom_in",
+        "zoom_out",
+        "pan_left",
+        "pan_right",
+        "slow_push",
+    ]
+
+    for idx, img_path in enumerate(image_paths):
+        segment_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_seg.mp4")
+        segment_paths.append(segment_path)
+
+        frames = int(per_image_duration * 30)
+        effect = effects[idx % len(effects)]
+
+        if effect == "zoom_in":
+            zoom_expr = "min(zoom+0.0018,1.18)"
+            x_expr = "iw/2-(iw/zoom/2)"
+            y_expr = "ih/2-(ih/zoom/2)"
+        elif effect == "zoom_out":
+            zoom_expr = "max(1.18-on*0.0018,1.0)"
+            x_expr = "iw/2-(iw/zoom/2)"
+            y_expr = "ih/2-(ih/zoom/2)"
+        elif effect == "pan_left":
+            zoom_expr = "1.12"
+            x_expr = "(iw-iw/zoom)*(1-on/{frames})"
+            y_expr = "ih/2-(ih/zoom/2)"
+        elif effect == "pan_right":
+            zoom_expr = "1.12"
+            x_expr = "(iw-iw/zoom)*(on/{frames})"
+            y_expr = "ih/2-(ih/zoom/2)"
+        else:
+            zoom_expr = "min(zoom+0.0012,1.12)"
+            x_expr = "iw/2-(iw/zoom/2)"
+            y_expr = "ih/2-(ih/zoom/2)"
+
+        vf = (
+            "scale=900:1600:force_original_aspect_ratio=increase,"
+            "crop=900:1600,"
+            f"zoompan=z='{zoom_expr}':"
+            f"x='{x_expr}':"
+            f"y='{y_expr}':"
+            f"d={frames}:s=720x1280:fps=30,"
+            "eq=contrast=1.06:brightness=0.02:saturation=1.08,"
+            "vignette=PI/5"
+        )
+
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            img_path,
+            "-vf",
+            vf,
+            "-t",
+            str(per_image_duration),
+            "-r",
+            "30",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-pix_fmt",
+            "yuv420p",
+            segment_path,
+        ]
+
+        result = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        if result.returncode != 0:
+            raise Exception(f"이미지 배경 세그먼트 생성 실패: {result.stderr}")
+
+    concat_list_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_concat.txt")
+
+    with open(concat_list_path, "w", encoding="utf-8") as f:
+        for p in segment_paths:
+            f.write(f"file '{os.path.abspath(p).replace(chr(92), '/')}'\n")
+
+    cmd_concat = [
+        "ffmpeg",
+        "-y",
+        "-f",
+        "concat",
+        "-safe",
+        "0",
+        "-i",
+        concat_list_path,
+        "-c",
+        "copy",
+        output_path,
+    ]
+
+    result = subprocess.run(
+        cmd_concat,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        raise Exception(f"이미지 배경 concat 실패: {result.stderr}")
+
+    return output_path
+
+
 @app.get("/")
 def root():
-    return {"message": "Shorts Maker AI API is running!", "status": "ok"}
+    return {
+        "message": "Shorts Maker AI API is running!",
+        "status": "ok"
+    }
 
 
 @app.post("/generate-script")
@@ -208,6 +358,7 @@ def generate_script(req: ScriptRequest):
 - 뉴스 말투 금지
 - 허위 사실 금지
 - 자막에 보기 좋게 짧은 문장
+- 트로트/가수 기사에 맞게 팬들이 궁금해할 포인트를 살릴 것
 - JSON만 출력
 
 JSON 형식:
@@ -225,8 +376,14 @@ JSON 형식:
         response = openai_client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": "너는 한국 유튜브 쇼츠 대본 전문가다."},
-                {"role": "user", "content": prompt},
+                {
+                    "role": "system",
+                    "content": "너는 한국 유튜브 쇼츠 대본 전문가다."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                },
             ],
             temperature=0.8,
         )
@@ -290,6 +447,9 @@ def generate_voice(req: VoiceRequest):
         if not audio_base64:
             raise Exception("audio_base64가 없습니다.")
 
+        if not alignment:
+            raise Exception("alignment가 없습니다.")
+
         with open(audio_path, "wb") as f:
             f.write(base64.b64decode(audio_base64))
 
@@ -336,6 +496,7 @@ def make_video(req: VideoRequest):
 
         video_id = str(uuid.uuid4())
         srt_path = os.path.join(SRT_DIR, f"{video_id}.srt")
+        bg_video_path = os.path.join(TEMP_DIR, f"{video_id}_bg.mp4")
         output_path = os.path.join(VIDEO_DIR, f"{video_id}.mp4")
 
         audio_duration = get_audio_duration(audio_path)
@@ -347,6 +508,24 @@ def make_video(req: VideoRequest):
         else:
             subtitle_text = clean_text(req.tts_text) or clean_text(req.script)
             make_fallback_srt(subtitle_text, audio_duration, srt_path)
+
+        image_paths = []
+
+        for img_b64 in req.images[:8]:
+            img_path = os.path.join(IMAGE_DIR, f"{uuid.uuid4()}.jpg")
+            decode_base64_image(img_b64, img_path)
+            image_paths.append(img_path)
+
+        if image_paths:
+            make_image_background_video(image_paths, audio_duration, bg_video_path)
+            video_input_args = ["-i", bg_video_path]
+        else:
+            video_input_args = [
+                "-f",
+                "lavfi",
+                "-i",
+                "color=c=black:s=720x1280:r=30"
+            ]
 
         if not os.path.exists("NotoSansKR-Bold.ttf"):
             raise HTTPException(status_code=500, detail="NotoSansKR-Bold.ttf 폰트 파일이 없습니다.")
@@ -371,15 +550,21 @@ def make_video(req: VideoRequest):
         cmd = [
             "ffmpeg",
             "-y",
-            "-f", "lavfi",
-            "-i", "color=c=black:s=720x1280:r=30",
-            "-i", audio_path,
-            "-vf", vf,
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-crf", "28",
-            "-c:a", "aac",
-            "-b:a", "128k",
+            *video_input_args,
+            "-i",
+            audio_path,
+            "-vf",
+            vf,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "27",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
             "-shortest",
             output_path,
         ]
@@ -398,6 +583,7 @@ def make_video(req: VideoRequest):
             "video_url": f"/video/{video_id}.mp4",
             "srt_url": f"/srt/{video_id}.srt",
             "duration": audio_duration,
+            "image_count": len(image_paths),
         }
 
     except HTTPException:
@@ -409,30 +595,38 @@ def make_video(req: VideoRequest):
 @app.get("/audio/{filename}")
 def get_audio(filename: str):
     path = os.path.join(AUDIO_DIR, filename)
+
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="오디오 파일을 찾을 수 없습니다.")
+
     return FileResponse(path, media_type="audio/mpeg")
 
 
 @app.get("/alignment/{filename}")
 def get_alignment(filename: str):
     path = os.path.join(ALIGN_DIR, filename)
+
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="alignment 파일을 찾을 수 없습니다.")
+
     return FileResponse(path, media_type="application/json")
 
 
 @app.get("/video/{filename}")
 def get_video(filename: str):
     path = os.path.join(VIDEO_DIR, filename)
+
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="영상 파일을 찾을 수 없습니다.")
+
     return FileResponse(path, media_type="video/mp4")
 
 
 @app.get("/srt/{filename}")
 def get_srt(filename: str):
     path = os.path.join(SRT_DIR, filename)
+
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="SRT 파일을 찾을 수 없습니다.")
+
     return FileResponse(path, media_type="text/plain")
