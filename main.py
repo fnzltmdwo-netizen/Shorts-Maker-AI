@@ -219,55 +219,37 @@ def make_image_background_video(image_paths, duration, output_path):
     segment_paths = []
     per_image_duration = duration / len(image_paths)
 
-    effects = [
-        "zoom_in",
-        "zoom_out",
-        "pan_left",
-        "pan_right",
-        "slow_push",
-    ]
-
     for idx, img_path in enumerate(image_paths):
         segment_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_seg.mp4")
         segment_paths.append(segment_path)
 
-        frames = int(per_image_duration * 30)
-        effect = effects[idx % len(effects)]
+        frames = max(30, int(per_image_duration * 30))
 
-        if effect == "zoom_in":
-            zoom_expr = "min(zoom+0.0018,1.18)"
-            x_expr = "iw/2-(iw/zoom/2)"
-            y_expr = "ih/2-(ih/zoom/2)"
-        elif effect == "zoom_out":
-            zoom_expr = "max(1.18-on*0.0018,1.0)"
-            x_expr = "iw/2-(iw/zoom/2)"
-            y_expr = "ih/2-(ih/zoom/2)"
-        elif effect == "pan_left":
-            zoom_expr = "1.12"
-            x_expr = "(iw-iw/zoom)*(1-on/{frames})"
-            y_expr = "ih/2-(ih/zoom/2)"
-        elif effect == "pan_right":
-            zoom_expr = "1.12"
-            x_expr = "(iw-iw/zoom)*(on/{frames})"
-            y_expr = "ih/2-(ih/zoom/2)"
+        if idx % 4 == 0:
+            zoom_expr = "min(zoom+0.0015,1.12)"
+        elif idx % 4 == 1:
+            zoom_expr = "max(1.12-on*0.0012,1.0)"
+        elif idx % 4 == 2:
+            zoom_expr = "min(zoom+0.0010,1.10)"
         else:
-            zoom_expr = "min(zoom+0.0012,1.12)"
-            x_expr = "iw/2-(iw/zoom/2)"
-            y_expr = "ih/2-(ih/zoom/2)"
+            zoom_expr = "min(zoom+0.0018,1.15)"
 
         vf = (
-            "scale=900:1600:force_original_aspect_ratio=increase,"
-            "crop=900:1600,"
+            "scale=720:1280:force_original_aspect_ratio=increase,"
+            "crop=720:1280,"
             f"zoompan=z='{zoom_expr}':"
-            f"x='{x_expr}':"
-            f"y='{y_expr}':"
+            "x='iw/2-(iw/zoom/2)':"
+            "y='ih/2-(ih/zoom/2)':"
             f"d={frames}:s=720x1280:fps=30,"
-            "eq=contrast=1.06:brightness=0.02:saturation=1.08,"
+            "eq=contrast=1.05:brightness=0.01:saturation=1.05"
         )
 
         cmd = [
             "ffmpeg",
             "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
             "-loop",
             "1",
             "-i",
@@ -302,11 +284,15 @@ def make_image_background_video(image_paths, duration, output_path):
 
     with open(concat_list_path, "w", encoding="utf-8") as f:
         for p in segment_paths:
-            f.write(f"file '{os.path.abspath(p).replace(chr(92), '/')}'\n")
+            safe_path = os.path.abspath(p).replace("\\", "/")
+            f.write(f"file '{safe_path}'\n")
 
     cmd_concat = [
         "ffmpeg",
         "-y",
+        "-hide_banner",
+        "-loglevel",
+        "error",
         "-f",
         "concat",
         "-safe",
@@ -330,7 +316,6 @@ def make_image_background_video(image_paths, duration, output_path):
         raise Exception(f"이미지 배경 concat 실패:\n{error_tail}")
 
     return output_path
-
 
 @app.get("/")
 def root():
