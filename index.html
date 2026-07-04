@@ -148,8 +148,8 @@ async function generateShorts() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        source_text: sourceText,
-        tone: tone
+        text: scriptText,
+        voice: "nova"
       })
     });
 
