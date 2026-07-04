@@ -119,51 +119,49 @@ def split_big_caption(text: str) -> str:
     if not words:
         return text
 
-    if len(words) == 1:
+    word_count = len(words)
+
+    # 1단어
+    if word_count == 1:
         chars = list(text)
         lines = []
-
         for i in range(0, len(chars), 6):
             lines.append("".join(chars[i:i + 6]))
-
         return "\n".join(lines[:4])
 
+    # 2단어
+    if word_count == 2:
+        return "\n".join(words)
+
+    # 3단어
+    if word_count == 3:
+        return "\n".join(words)
+
+    # 4단어 ← 핵심
+    if word_count == 4:
+        return "\n".join([
+            words[0],
+            words[1] + " " + words[2],
+            words[3]
+        ])
+
+    # 5단어
+    if word_count == 5:
+        return "\n".join([
+            words[0] + " " + words[1],
+            words[2] + " " + words[3],
+            words[4]
+        ])
+
+    # 6개 이상
     lines = []
-    current = words[0]
+    chunk_size = max(2, round(word_count / 3))
 
-    MIN_LEN = 5
-    MAX_LEN = 12
+    for i in range(0, word_count, chunk_size):
+        chunk = words[i:i + chunk_size]
+        lines.append(" ".join(chunk))
 
-    for word in words[1:]:
-        candidate = current + " " + word
-
-        if len(candidate) <= MAX_LEN:
-            current = candidate
-        else:
-            lines.append(current)
-            current = word
-
-    if current:
-        lines.append(current)
-
-    if len(lines) > 4:
-        total = len(words)
-        chunk_size = max(1, total // 3)
-
-        lines = []
-        for i in range(0, total, chunk_size):
-            chunk = words[i:i + chunk_size]
-            lines.append(" ".join(chunk))
-
-    balanced = []
-
-    for line in lines:
-        if balanced and len(line) < MIN_LEN:
-            balanced[-1] += " " + line
-        else:
-            balanced.append(line)
-
-    return "\n".join(balanced[:4])
+    return "\n".join(lines[:4])
 
 
 def add_captions(blocks):
