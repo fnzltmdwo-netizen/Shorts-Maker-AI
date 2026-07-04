@@ -34,7 +34,7 @@ class ScriptRequest(BaseModel):
 @app.get("/")
 def root():
     return {
-        "message": "Shorts Maker AI v2",
+        "message": "Shorts Maker AI v2 - Audio Pack",
         "status": "running",
     }
 
@@ -44,7 +44,7 @@ def time_to_seconds(text: str) -> float:
     return float(text)
 
 
-def clean_caption_text(text: str) -> str:
+def clean_text(text: str) -> str:
     text = text.strip()
     text = text.replace('"', "")
     text = text.replace("“", "")
@@ -80,7 +80,7 @@ def parse_script(script: str):
                     {
                         "start": current_start,
                         "end": current_end,
-                        "text": clean_caption_text("\n".join(current_text_lines)),
+                        "text": clean_text("\n".join(current_text_lines)),
                     }
                 )
 
@@ -97,7 +97,7 @@ def parse_script(script: str):
             {
                 "start": current_start,
                 "end": current_end,
-                "text": clean_caption_text("\n".join(current_text_lines)),
+                "text": clean_text("\n".join(current_text_lines)),
             }
         )
 
@@ -113,93 +113,19 @@ def seconds_to_srt_time(seconds: float) -> str:
     return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
 
 
-def split_big_caption(text: str) -> str:
-    words = text.split()
-
-    if not words:
-        return text
-
-    word_count = len(words)
-
-    # 1단어
-    if word_count == 1:
-        chars = list(text)
-        lines = []
-        for i in range(0, len(chars), 6):
-            lines.append("".join(chars[i:i + 6]))
-        return "\n".join(lines[:4])
-
-    # 2단어
-    if word_count == 2:
-        return "\n".join(words)
-
-    # 3단어
-    if word_count == 3:
-        return "\n".join(words)
-
-    # 4단어 ← 핵심
-    if word_count == 4:
-        return "\n".join([
-            words[0],
-            words[1] + " " + words[2],
-            words[3]
-        ])
-
-    # 5단어
-    if word_count == 5:
-        return "\n".join([
-            words[0] + " " + words[1],
-            words[2] + " " + words[3],
-            words[4]
-        ])
-
-    # 6개 이상
-    lines = []
-    chunk_size = max(2, round(word_count / 3))
-
-    for i in range(0, word_count, chunk_size):
-        chunk = words[i:i + chunk_size]
-        lines.append(" ".join(chunk))
-
-    return "\n".join(lines[:4])
-
-
-def add_captions(blocks):
-    new_blocks = []
-
-    for block in blocks:
-        copied = dict(block)
-        copied["big_caption"] = split_big_caption(block["text"])
-        new_blocks.append(copied)
-
-    return new_blocks
-
-
 def create_srt(blocks, srt_path: Path):
     lines = []
 
     for index, block in enumerate(blocks, start=1):
         start = seconds_to_srt_time(block["start"])
         end = seconds_to_srt_time(block["end"])
-        text = block["big_caption"]
 
         lines.append(str(index))
         lines.append(f"{start} --> {end}")
-        lines.append(text)
+        lines.append(block["text"])
         lines.append("")
 
     srt_path.write_text("\n".join(lines), encoding="utf-8")
-
-
-def create_big_caption_txt(blocks, txt_path: Path):
-    lines = []
-
-    for index, block in enumerate(blocks, start=1):
-        lines.append(f"{index}.")
-        lines.append(block["big_caption"])
-        lines.append("")
-
-    txt_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 def generate_elevenlabs_mp3(text: str, output_path: Path):
@@ -246,23 +172,36 @@ def create_script_txt(blocks, txt_path: Path):
     txt_path.write_text("\n".join(lines), encoding="utf-8")
 
 
-def create_caption_style_txt(style_path: Path):
-    lines = [
-        "폰트: 눈누 기초고딕 Bold",
-        "크기: 280~340",
-        "색상: 노란색",
-        "정렬: 가운데",
-        "Stroke: 검정 12~18",
-        "Shadow: 검정 70%",
-    ]
+def create_premiere_guide(blocks, guide_path: Path):
+    lines = []
+    lines.append("프리미어 작업 가이드")
+    lines.append("")
+    lines.append("1. 1.mp3, 2.mp3, 3.mp3 순서대로 A1 트랙에 배치")
+    lines.append("2. 사진은 각 구간 길이에 맞게 V1 트랙에 배치")
+    lines.append("3. 자막은 직접 프리미어 Essential Graphics에서 제작")
+    lines.append("4. subtitles.srt는 참고용 기본 자막입니다")
+    lines.append("")
+    lines.append("컷별 구성")
+    lines.append("")
 
-    style_path.write_text("\n".join(lines), encoding="utf-8")
+    for index, block in enumerate(blocks, start=1):
+        lines.append(f"{index}. {block['start']}~{block['end']}초")
+        lines.append(f"음성 파일: {index}.mp3")
+        lines.append(f"내용: {block['text']}")
+        lines.append("")
+
+    guide_path.write_text("\n".join(lines), encoding="utf-8")
 
 
 @app.post("/parse-script")
 def parse_script_api(request: ScriptRequest):
+    if not request.script.strip():
+        raise HTTPException(status_code=400, detail="대본이 비어있습니다.")
+
     blocks = parse_script(request.script)
-    blocks = add_captions(blocks)
+
+    if not blocks:
+        raise HTTPException(status_code=400, detail="시간 형식을 찾지 못했습니다.")
 
     return {
         "count": len(blocks),
@@ -272,8 +211,13 @@ def parse_script_api(request: ScriptRequest):
 
 @app.post("/generate-pack")
 def generate_pack(request: ScriptRequest):
+    if not request.script.strip():
+        raise HTTPException(status_code=400, detail="대본이 비어있습니다.")
+
     blocks = parse_script(request.script)
-    blocks = add_captions(blocks)
+
+    if not blocks:
+        raise HTTPException(status_code=400, detail="시간 형식을 찾지 못했습니다.")
 
     job_id = str(uuid.uuid4())[:8]
     job_dir = OUTPUT_DIR / job_id
@@ -284,11 +228,10 @@ def generate_pack(request: ScriptRequest):
         generate_elevenlabs_mp3(block["text"], mp3_path)
 
     create_srt(blocks, job_dir / "subtitles.srt")
-    create_big_caption_txt(blocks, job_dir / "captions_big.txt")
     create_script_txt(blocks, job_dir / "script.txt")
-    create_caption_style_txt(job_dir / "caption_style.txt")
+    create_premiere_guide(blocks, job_dir / "premiere_guide.txt")
 
-    zip_path = OUTPUT_DIR / f"premiere_pack_{job_id}.zip"
+    zip_path = OUTPUT_DIR / f"audio_pack_{job_id}.zip"
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
         for file_path in job_dir.iterdir():
@@ -296,6 +239,6 @@ def generate_pack(request: ScriptRequest):
 
     return FileResponse(
         path=zip_path,
-        filename=f"premiere_pack_{job_id}.zip",
+        filename=f"audio_pack_{job_id}.zip",
         media_type="application/zip",
     )
