@@ -3,7 +3,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
-import os, json, uuid, requests, re
+from PIL import Image, ImageDraw, ImageFont
+from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
+
+import os, json, uuid, requests, re, textwrap
 
 app = FastAPI()
 
@@ -22,8 +25,10 @@ DEFAULT_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 
 AUDIO_DIR = "audios"
 SRT_DIR = "srts"
+VIDEO_DIR = "videos"
 os.makedirs(AUDIO_DIR, exist_ok=True)
 os.makedirs(SRT_DIR, exist_ok=True)
+os.makedirs(VIDEO_DIR, exist_ok=True)
 
 
 class ShortsRequest(BaseModel):
@@ -37,6 +42,11 @@ class TTSRequest(BaseModel):
 
 
 class SRTRequest(BaseModel):
+    captions: list[str]
+
+
+class VideoRequest(BaseModel):
+    audio_url: str
     captions: list[str]
 
 
@@ -57,8 +67,6 @@ def make_shorts(req: ShortsRequest):
 목표는 '뉴스 요약'이 아니라,
 사람들이 끝까지 보게 만드는 30초 쇼츠 대본 제작이다.
 
-아래 원문을 바탕으로 쇼츠 편집용 원고를 만들어라.
-
 [대본 스타일]
 - 친구가 연예계 썰 풀어주는 느낌
 - 기사체 금지
@@ -66,9 +74,9 @@ def make_shorts(req: ShortsRequest):
 - 문장은 짧게
 - 한 구간당 1~2문장
 - 자막처럼 줄바꿈
-- "~는데요", "심지어", "근데", "하지만", "이유가 뭘까요?" 같은 쇼츠 말투 사용
+- "~는데요", "심지어", "근데", "하지만" 같은 쇼츠 말투 사용
 - 원문에 없는 사실은 만들지 말 것
-- 루머/열애/논란은 단정하지 말고 “전해졌습니다”, “눈길을 끌었습니다”, “해명했습니다”처럼 표현
+- 루머/논란은 단정하지 말 것
 
 [반드시 이 형식]
 🎬 쇼츠 대본 (유형명 🔥)
@@ -94,7 +102,7 @@ def make_shorts(req: ShortsRequest):
 23~28초 (댓글 유도)
 "댓글 유도 문장"
 
-[좋은 예시 1]
+[좋은 예시]
 🎬 쇼츠 대본 (초대형 라인업형 🔥)
 
 0~2초 (훅)
@@ -113,8 +121,8 @@ def make_shorts(req: ShortsRequest):
 MC를 맡고 각 시즌 TOP7까지 합류하는데요"
 
 16~21초
-"자자연, 이수연, 솔지,
-에녹, 전해성까지 초호화 라인업입니다"
+"초호화 라인업이 공개되며
+팬들의 기대가 커지고 있습니다"
 
 21~26초
 "센터 자리를 두고
@@ -122,68 +130,6 @@ MC를 맡고 각 시즌 TOP7까지 합류하는데요"
 
 26~31초 (댓글 유도)
 "여러분이 생각하는 최종 1위는 누구인가요?"
-
-[좋은 예시 2]
-🎬 쇼츠 대본 (열애설 해명형 🔥)
-
-0~2초 (훅)
-"박서진, 홍지윤과 무슨 사이냐는 질문에 당황했습니다."
-
-2~6초
-"울릉도에서 주민들과 시간을 보내던 중
-뜻밖의 질문이 나왔는데요"
-
-6~10초
-"한 주민이 홍지윤과 눈빛이 이상하던데
-무슨 사이냐고 물었습니다"
-
-10~14초
-"심지어 출연진도 주변에서 많이 물어본다고 거들었는데요"
-
-14~18초
-"박서진은 곧바로
-진짜 친구일 뿐이라며 선을 그었습니다"
-
-18~23초
-"하지만 주민들은 친구가 원래 여보가 되는 것이라며
-웃음을 자아냈습니다"
-
-23~28초 (댓글 유도)
-"여러분은 박서진·홍지윤, 정말 친구라고 보시나요?"
-
-[좋은 예시 3]
-🎬 쇼츠 대본 (감동 실화형 🔥)
-
-0~2초 (훅)
-"에녹이 얼굴에 소금을 맞고 울었던 이유."
-
-2~6초
-"에녹은 20대부터
-집안의 가장이었다고 밝혔는데요"
-
-6~10초
-"대학 졸업 무렵
-아버지가 위암 말기 판정을 받았습니다"
-
-10~14초
-"생계를 위해 닥치는 대로
-아르바이트를 하던 시절"
-
-14~18초
-"한 직원이 갑자기 얼굴에 소금을 뿌리며
-재수 없다고 말했다는데요"
-
-18~23초
-"에녹은 골목에서 한참을 울었다고
-가슴 아픈 과거를 털어놨습니다"
-
-23~28초
-"하지만 기적처럼
-아버지는 16년째 건강을 유지 중이라고 합니다"
-
-28~33초 (댓글 유도)
-"에녹의 이야기,
-여러분도 응원하시나요?"
 
 [추가 출력물]
 - 제목 5개
@@ -216,16 +162,12 @@ MC를 맡고 각 시즌 TOP7까지 합류하는데요"
         response = openai_client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {
-                    "role": "system",
-                    "content": "너는 한국 유튜브 쇼츠 대본 제작 전문가다. JSON만 출력한다.",
-                },
+                {"role": "system", "content": "너는 한국 유튜브 쇼츠 대본 제작 전문가다. JSON만 출력한다."},
                 {"role": "user", "content": prompt},
             ],
             temperature=0.65,
             response_format={"type": "json_object"},
         )
-
         return json.loads(response.choices[0].message.content)
 
     except Exception as e:
@@ -322,6 +264,105 @@ def make_srt(req: SRTRequest):
         raise HTTPException(status_code=500, detail=f"SRT 생성 실패: {str(e)}")
 
 
+def get_font(size=58):
+    font_paths = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ]
+
+    for path in font_paths:
+        if os.path.exists(path):
+            return ImageFont.truetype(path, size)
+
+    return ImageFont.load_default()
+
+
+def make_caption_image(text, output_path):
+    width, height = 1080, 1920
+    img = Image.new("RGB", (width, height), color=(0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    font = get_font(62)
+    clean_text = re.sub(r"\s+", " ", text).strip()
+    wrapped = textwrap.fill(clean_text, width=13)
+
+    bbox = draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=18)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+
+    x = (width - text_w) / 2
+    y = (height - text_h) / 2
+
+    draw.multiline_text(
+        (x, y),
+        wrapped,
+        font=font,
+        fill=(255, 255, 255),
+        spacing=18,
+        align="center",
+    )
+
+    img.save(output_path)
+
+
+@app.post("/make-video")
+def make_video(req: VideoRequest):
+    if not req.audio_url:
+        raise HTTPException(status_code=400, detail="audio_url이 없습니다.")
+
+    if not req.captions:
+        raise HTTPException(status_code=400, detail="captions가 없습니다.")
+
+    try:
+        filename = req.audio_url.split("/")[-1]
+        audio_path = os.path.join(AUDIO_DIR, filename)
+
+        if not os.path.exists(audio_path):
+            raise HTTPException(status_code=404, detail="음성 파일을 찾을 수 없습니다.")
+
+        file_id = str(uuid.uuid4())
+        video_path = os.path.join(VIDEO_DIR, f"{file_id}.mp4")
+
+        audio = AudioFileClip(audio_path)
+        total_duration = audio.duration
+        caption_duration = total_duration / len(req.captions)
+
+        clips = []
+
+        for i, caption in enumerate(req.captions):
+            img_path = os.path.join(VIDEO_DIR, f"{file_id}_{i}.png")
+            make_caption_image(caption, img_path)
+
+            clip = ImageClip(img_path).set_duration(caption_duration)
+            clips.append(clip)
+
+        video = concatenate_videoclips(clips, method="compose")
+        video = video.set_audio(audio)
+        video = video.set_fps(24)
+
+        video.write_videofile(
+            video_path,
+            codec="libx264",
+            audio_codec="aac",
+            fps=24,
+            preset="ultrafast",
+            threads=2,
+            verbose=False,
+            logger=None,
+        )
+
+        audio.close()
+        video.close()
+
+        return {"video_url": f"/video/{file_id}.mp4"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"영상 생성 실패: {str(e)}")
+
+
 @app.get("/audio/{filename}")
 def get_audio(filename: str):
     file_path = os.path.join(AUDIO_DIR, filename)
@@ -336,3 +377,11 @@ def get_srt(filename: str):
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
     return FileResponse(file_path, media_type="text/plain", filename=filename)
+
+
+@app.get("/video/{filename}")
+def get_video(filename: str):
+    file_path = os.path.join(VIDEO_DIR, filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
+    return FileResponse(file_path, media_type="video/mp4", filename=filename)
