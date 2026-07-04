@@ -334,7 +334,7 @@ def make_video(req: VideoRequest):
             img_path = os.path.join(VIDEO_DIR, f"{file_id}_{i}.png")
             make_caption_image(caption, img_path)
 
-            clip = ImageClip(img_path).set_duration(caption_duration)
+            clip = ImageClip(img_path).with_duration(caption_duration)
             clips.append(clip)
 
         video = concatenate_videoclips(clips, method="compose")
