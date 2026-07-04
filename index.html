@@ -3,39 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Shorts Maker AI</title>
+  <title>승재 쇼츠 자동 생성기</title>
 
   <style>
     body {
       margin: 0;
-      background: #f4f6fb;
       font-family: Arial, sans-serif;
-      color: #222;
+      background: #111;
+      color: white;
     }
 
     .container {
-      max-width: 860px;
-      margin: 30px auto;
-      padding: 28px;
-      background: white;
-      border-radius: 18px;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px 18px;
     }
 
     h1 {
-      margin-top: 0;
       text-align: center;
-      font-size: 30px;
+      margin-bottom: 10px;
+    }
+
+    .desc {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 28px;
     }
 
     textarea {
       width: 100%;
       min-height: 220px;
       padding: 16px;
-      border: 1px solid #ddd;
       border-radius: 12px;
-      font-size: 15px;
+      border: none;
       resize: vertical;
+      font-size: 15px;
       box-sizing: border-box;
     }
 
@@ -45,7 +47,7 @@
       padding: 15px;
       border: none;
       border-radius: 12px;
-      background: #222;
+      background: #ff3b5c;
       color: white;
       font-size: 17px;
       font-weight: bold;
@@ -53,196 +55,189 @@
     }
 
     button:disabled {
-      background: #999;
+      background: #555;
       cursor: not-allowed;
     }
 
-    .section {
-      margin-top: 26px;
+    .card {
+      margin-top: 22px;
+      background: #1f1f1f;
+      border-radius: 16px;
       padding: 18px;
-      background: #fafafa;
-      border-radius: 14px;
-      border: 1px solid #eee;
+      box-sizing: border-box;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 20px;
     }
 
     pre {
       white-space: pre-wrap;
       word-break: keep-all;
-      line-height: 1.6;
-      font-size: 15px;
+      line-height: 1.65;
+      background: #151515;
+      padding: 14px;
+      border-radius: 12px;
+      color: #f1f1f1;
+    }
+
+    audio,
+    video {
+      width: 100%;
+      margin-top: 12px;
+      border-radius: 14px;
     }
 
     .status {
-      margin-top: 16px;
-      font-weight: bold;
+      margin-top: 14px;
+      color: #ffd166;
       text-align: center;
-    }
-
-    a.download {
-      display: block;
-      margin-top: 12px;
-      padding: 13px;
-      background: #3467ff;
-      color: white;
-      text-align: center;
-      text-decoration: none;
-      border-radius: 12px;
       font-weight: bold;
     }
 
-    audio, video {
-      width: 100%;
-      margin-top: 12px;
-      border-radius: 12px;
+    .hidden {
+      display: none;
     }
 
-    ul {
-      padding-left: 20px;
-      line-height: 1.7;
+    a {
+      color: #7cc7ff;
+      word-break: break-all;
+    }
+
+    .small {
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.5;
     }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <h1>🎬 Shorts Maker AI</h1>
+    <h1>승재 쇼츠 자동 생성기</h1>
+    <p class="desc">기사 붙여넣기 → 대본 → AI 음성 → 자막 영상 생성</p>
 
-    <textarea id="sourceText" placeholder="여기에 기사 본문을 붙여넣어줘"></textarea>
+    <textarea id="articleInput" placeholder="여기에 기사 내용을 붙여넣어줘"></textarea>
 
-    <button onclick="makeShorts()">1. 쇼츠 대본 생성</button>
-    <button onclick="makeTTS()" id="ttsBtn" disabled>2. AI 음성 생성</button>
-    <button onclick="makeSRT()" id="srtBtn" disabled>3. SRT 자막 생성</button>
-    <button onclick="makeVideo()" id="videoBtn" disabled>4. MP4 영상 생성</button>
+    <button id="scriptBtn" onclick="generateScript()">1. 쇼츠 대본 생성</button>
+    <button id="voiceBtn" onclick="generateVoice()" disabled>2. AI 음성 생성</button>
+    <button id="videoBtn" onclick="makeVideo()" disabled>3. 영상 만들기</button>
 
-    <div class="status" id="status"></div>
+    <div id="status" class="status"></div>
 
-    <div id="resultArea" style="display:none;">
-      <div class="section">
-        <h2>🎬 쇼츠 대본</h2>
-        <pre id="scriptResult"></pre>
-      </div>
+    <div id="scriptBox" class="card hidden">
+      <h2>생성된 제목</h2>
+      <pre id="titleOutput"></pre>
 
-      <div class="section">
-        <h2>🔥 더 강한 조회수 버전</h2>
-        <pre id="strongResult"></pre>
-      </div>
+      <h2>화면 대본</h2>
+      <pre id="scriptOutput"></pre>
 
-      <div class="section">
-        <h2>🏷 제목</h2>
-        <ul id="titlesResult"></ul>
-      </div>
+      <h2>AI 음성용 대본</h2>
+      <pre id="ttsOutput"></pre>
+    </div>
 
-      <div class="section">
-        <h2>🖼 썸네일 문구</h2>
-        <ul id="thumbResult"></ul>
-      </div>
+    <div id="voiceBox" class="card hidden">
+      <h2>AI 음성</h2>
+      <audio id="audioPlayer" controls></audio>
+      <p id="voiceLink" class="small"></p>
+    </div>
 
-      <div class="section">
-        <h2>🎧 AI 음성</h2>
-        <audio id="audioPlayer" controls style="display:none;"></audio>
-        <a id="audioDownload" class="download" style="display:none;" download>MP3 다운로드</a>
-      </div>
-
-      <div class="section">
-        <h2>📝 SRT 자막</h2>
-        <a id="srtDownload" class="download" style="display:none;" download>SRT 다운로드</a>
-      </div>
-
-      <div class="section">
-        <h2>🎞 자동 생성 영상</h2>
-        <video id="videoPlayer" controls style="display:none;"></video>
-        <a id="videoDownload" class="download" style="display:none;" download>MP4 다운로드</a>
-      </div>
+    <div id="videoBox" class="card hidden">
+      <h2>완성 영상</h2>
+      <video id="videoPlayer" controls></video>
+      <p id="videoLink" class="small"></p>
+      <p id="srtLink" class="small"></p>
     </div>
   </div>
 
   <script>
     const API_BASE = "https://shorts-maker-api.onrender.com";
 
-    let shortsData = null;
-    let audioUrl = null;
-    let srtUrl = null;
-    let videoUrl = null;
+    let shortsData = {
+      title: "",
+      script: "",
+      tts_text: "",
+      voice_url: "",
+      video_url: "",
+      srt_url: ""
+    };
 
     function setStatus(message) {
       document.getElementById("status").innerText = message;
     }
 
-    function renderList(id, items) {
-      const ul = document.getElementById(id);
-      ul.innerHTML = "";
-
-      if (!items || !Array.isArray(items)) return;
-
-      items.forEach(item => {
-        const li = document.createElement("li");
-        li.innerText = item;
-        ul.appendChild(li);
-      });
+    function setLoading(buttonId, isLoading, text) {
+      const btn = document.getElementById(buttonId);
+      btn.disabled = isLoading;
+      if (text) btn.innerText = text;
     }
 
-    async function makeShorts() {
-      const sourceText = document.getElementById("sourceText").value.trim();
+    async function generateScript() {
+      const article = document.getElementById("articleInput").value.trim();
 
-      if (!sourceText) {
-        alert("기사 본문을 입력해줘!");
+      if (!article) {
+        alert("기사 내용을 먼저 붙여넣어줘!");
         return;
       }
 
       try {
         setStatus("쇼츠 대본 생성 중...");
-        document.getElementById("resultArea").style.display = "none";
+        setLoading("scriptBtn", true, "대본 생성 중...");
 
-        document.getElementById("ttsBtn").disabled = true;
-        document.getElementById("srtBtn").disabled = true;
+        document.getElementById("voiceBtn").disabled = true;
         document.getElementById("videoBtn").disabled = true;
 
-        const res = await fetch(`${API_BASE}/make-shorts`, {
+        const res = await fetch(`${API_BASE}/generate-script`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            source_text: sourceText,
-            tone: "승재 쇼츠형"
+            article: article
           })
         });
 
+        const data = await res.json();
+
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "대본 생성 실패");
+          throw new Error(data.detail || "대본 생성 실패");
         }
 
-        shortsData = await res.json();
+        shortsData.title = data.title || "";
+        shortsData.script = data.script || "";
+        shortsData.tts_text = data.tts_text || data.script || "";
 
-        document.getElementById("scriptResult").innerText = shortsData.formatted_script || "";
-        document.getElementById("strongResult").innerText = shortsData.strong_version || "";
+        document.getElementById("titleOutput").innerText = shortsData.title;
+        document.getElementById("scriptOutput").innerText = shortsData.script;
+        document.getElementById("ttsOutput").innerText = shortsData.tts_text;
 
-        renderList("titlesResult", shortsData.titles);
-        renderList("thumbResult", shortsData.thumbnail_texts);
+        document.getElementById("scriptBox").classList.remove("hidden");
+        document.getElementById("voiceBtn").disabled = false;
 
-        document.getElementById("resultArea").style.display = "block";
-        document.getElementById("ttsBtn").disabled = false;
-        document.getElementById("srtBtn").disabled = false;
-
-        setStatus("대본 생성 완료!");
-
-      } catch (error) {
-        console.error(error);
-        setStatus("오류: " + error.message);
+        setStatus("대본 생성 완료! 이제 AI 음성을 만들어줘.");
+      } catch (err) {
+        console.error(err);
+        alert("대본 생성 실패: " + err.message);
+        setStatus("대본 생성 실패");
+      } finally {
+        setLoading("scriptBtn", false, "1. 쇼츠 대본 생성");
       }
     }
 
-    async function makeTTS() {
-      if (!shortsData || !shortsData.tts_text) {
-        alert("먼저 쇼츠 대본을 생성해줘!");
+    async function generateVoice() {
+      if (!shortsData.tts_text) {
+        alert("먼저 대본을 생성해줘!");
         return;
       }
 
       try {
         setStatus("AI 음성 생성 중...");
+        setLoading("voiceBtn", true, "음성 생성 중...");
 
-        const res = await fetch(`${API_BASE}/make-tts`, {
+        document.getElementById("videoBtn").disabled = true;
+
+        const res = await fetch(`${API_BASE}/generate-voice`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json"
@@ -252,88 +247,43 @@
           })
         });
 
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "음성 생성 실패");
-        }
-
         const data = await res.json();
-        audioUrl = API_BASE + data.audio_url;
-
-        const audioPlayer = document.getElementById("audioPlayer");
-        audioPlayer.src = audioUrl;
-        audioPlayer.style.display = "block";
-
-        const audioDownload = document.getElementById("audioDownload");
-        audioDownload.href = audioUrl;
-        audioDownload.style.display = "block";
-
-        if (shortsData.captions && shortsData.captions.length > 0) {
-          document.getElementById("videoBtn").disabled = false;
-        }
-
-        setStatus("AI 음성 생성 완료!");
-
-      } catch (error) {
-        console.error(error);
-        setStatus("오류: " + error.message);
-      }
-    }
-
-    async function makeSRT() {
-      if (!shortsData || !shortsData.captions) {
-        alert("먼저 쇼츠 대본을 생성해줘!");
-        return;
-      }
-
-      try {
-        setStatus("SRT 자막 생성 중...");
-
-        const res = await fetch(`${API_BASE}/make-srt`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            captions: shortsData.captions
-          })
-        });
 
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "SRT 생성 실패");
+          throw new Error(data.detail || "음성 생성 실패");
         }
 
-        const data = await res.json();
-        srtUrl = API_BASE + data.srt_url;
+        shortsData.voice_url = data.voice_url;
+        shortsData.tts_text = data.tts_text || shortsData.tts_text;
 
-        const srtDownload = document.getElementById("srtDownload");
-        srtDownload.href = srtUrl;
-        srtDownload.style.display = "block";
+        const fullAudioUrl = `${API_BASE}${shortsData.voice_url}`;
 
-        setStatus("SRT 자막 생성 완료!");
+        document.getElementById("audioPlayer").src = fullAudioUrl;
+        document.getElementById("voiceLink").innerHTML =
+          `음성 파일: <a href="${fullAudioUrl}" target="_blank">${fullAudioUrl}</a>`;
 
-      } catch (error) {
-        console.error(error);
-        setStatus("오류: " + error.message);
+        document.getElementById("voiceBox").classList.remove("hidden");
+        document.getElementById("videoBtn").disabled = false;
+
+        setStatus("음성 생성 완료! 이제 영상 만들기를 눌러줘.");
+      } catch (err) {
+        console.error(err);
+        alert("음성 생성 실패: " + err.message);
+        setStatus("음성 생성 실패");
+      } finally {
+        setLoading("voiceBtn", false, "2. AI 음성 생성");
       }
     }
 
     async function makeVideo() {
-      if (!audioUrl) {
+      if (!shortsData.voice_url) {
         alert("먼저 AI 음성을 생성해줘!");
         return;
       }
 
-      if (!shortsData || !shortsData.captions) {
-        alert("자막 데이터가 없어!");
-        return;
-      }
-
       try {
-        setStatus("MP4 영상 생성 중... 시간이 조금 걸릴 수 있어.");
-
-        const backendAudioUrl = audioUrl.replace(API_BASE, "");
+        setStatus("영상 생성 중... 시간이 조금 걸릴 수 있어.");
+        setLoading("videoBtn", true, "영상 생성 중...");
 
         const res = await fetch(`${API_BASE}/make-video`, {
           method: "POST",
@@ -341,33 +291,40 @@
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            audio_url: backendAudioUrl,
-            captions: shortsData.captions,
-            tts_text: shortsData.tts_text
+            title: shortsData.title,
+            script: shortsData.script,
+            tts_text: shortsData.tts_text,
+            voice_url: shortsData.voice_url
           })
         });
 
+        const data = await res.json();
+
         if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.detail || "영상 생성 실패");
+          throw new Error(data.detail || "영상 생성 실패");
         }
 
-        const data = await res.json();
-        videoUrl = API_BASE + data.video_url;
+        shortsData.video_url = data.video_url;
+        shortsData.srt_url = data.srt_url;
 
-        const videoPlayer = document.getElementById("videoPlayer");
-        videoPlayer.src = videoUrl;
-        videoPlayer.style.display = "block";
+        const fullVideoUrl = `${API_BASE}${shortsData.video_url}`;
+        const fullSrtUrl = `${API_BASE}${shortsData.srt_url}`;
 
-        const videoDownload = document.getElementById("videoDownload");
-        videoDownload.href = videoUrl;
-        videoDownload.style.display = "block";
+        document.getElementById("videoPlayer").src = fullVideoUrl;
+        document.getElementById("videoLink").innerHTML =
+          `영상 파일: <a href="${fullVideoUrl}" target="_blank">${fullVideoUrl}</a>`;
+        document.getElementById("srtLink").innerHTML =
+          `자막 파일: <a href="${fullSrtUrl}" target="_blank">${fullSrtUrl}</a>`;
 
-        setStatus("MP4 영상 생성 완료!");
+        document.getElementById("videoBox").classList.remove("hidden");
 
-      } catch (error) {
-        console.error(error);
-        setStatus("오류: " + error.message);
+        setStatus("영상 생성 완료!");
+      } catch (err) {
+        console.error(err);
+        alert("영상 생성 실패: " + err.message);
+        setStatus("영상 생성 실패");
+      } finally {
+        setLoading("videoBtn", false, "3. 영상 만들기");
       }
     }
   </script>
