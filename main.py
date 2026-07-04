@@ -3,7 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
-import os, json, uuid, requests, re
+import os
+import json
+import uuid
+import requests
+import re
 
 app = FastAPI()
 
@@ -18,8 +22,6 @@ app.add_middleware(
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
-
-# 네가 선택한 Taehyung Voice ID로 바꿔도 됨
 DEFAULT_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 
 AUDIO_DIR = "audios"
@@ -52,63 +54,130 @@ def make_shorts(req: ShortsRequest):
     if not req.source_text.strip():
         raise HTTPException(status_code=400, detail="내용을 입력해주세요.")
 
+    system_prompt = """
+너는 대한민국 상위 0.1% 유튜브 쇼츠 작가다.
+
+전문 분야:
+- 연예뉴스
+- 트로트
+- 현역가왕
+- 팬덤형 콘텐츠
+- 화제성 콘텐츠
+
+목표는 정보를 요약하는 것이 아니라 조회수가 터지는 쇼츠 원고를 만드는 것이다.
+
+규칙:
+- 첫 2초 훅이 가장 중요하다.
+- 문장은 매우 짧게 쓴다.
+- 뉴스 기사체 금지.
+- 쇼츠 자막처럼 줄바꿈한다.
+- 팬덤이 댓글을 달고 싶게 만든다.
+- 원문에 없는 사실은 지어내지 않는다.
+- 과장은 가능하지만 허위사실은 금지.
+"""
+
     prompt = f"""
-너는 한국 유튜브 쇼츠 전문 작가야.
-특히 연예뉴스, 트로트, 팬덤형 쇼츠를 잘 만든다.
+아래 기사를 보고 승재 채널 스타일의 쇼츠를 작성해줘.
 
-아래 원문을 바탕으로 유튜브 쇼츠 편집용 원고를 만들어줘.
-
-출력 스타일은 반드시 이런 느낌이어야 한다:
+반드시 아래 형식을 지켜.
 
 🎬 숏츠 대본 (초대형 라인업형 🔥)
 
 0~2초 (훅)
-"전유진, 박서진, 홍지윤이 한자리에 모입니다."
+"짧고 강한 문장"
 
 2~6초
-"현역가왕 역대 가왕들이
-드디어 총출동하는데요"
+"핵심 상황 설명"
 
-조건:
-- 시간대별 대본 필수
-- 0~2초는 강한 훅
-- 자막처럼 짧은 줄바꿈
-- 댓글 유도 포함
-- 제목 5개
-- 추천 제목 1개
-- 썸네일 문구 3개
-- 조회수 포인트 5개
-- 댓글 유도 2개
-- 더 강한 조회수 버전 포함
-- 원문에 없는 내용 과하게 지어내지 말 것
-- 허위사실/루머처럼 단정하지 말 것
+6~11초
+"사건 전개"
 
-원문:
+11~16초
+"핵심 출연진 / 인물"
+
+16~21초
+"시청자 관심 포인트"
+
+21~26초
+"갈등 / 경쟁 / 비교"
+
+26~31초 (댓글 유도)
+"여러분 생각은?"
+
+🔥 제목
+
+1️⃣ 제목1
+2️⃣ 제목2
+3️⃣ 제목3
+4️⃣ 제목4
+5️⃣ 제목5
+
+👉 추천 제목
+"가장 잘 뽑힌 제목"
+
+🖼 썸네일 문구
+
+"문구1"
+"문구2"
+"문구3"
+
+📈 조회수 포인트
+
+✔ 포인트1
+✔ 포인트2
+✔ 포인트3
+✔ 포인트4
+✔ 포인트5
+
+💬 댓글 유도
+
+"댓글 문장1"
+"댓글 문장2"
+
+💣 더 강한 조회수 버전 (팬덤 싸움형)
+
+0~2초
+"결국 붙습니다."
+
+2~7초
+"더 자극적인 버전"
+
+규칙:
+- 쇼츠 길이 30~35초
+- 첫 2초 무조건 강한 훅
+- 문장 짧게
+- 자막처럼 줄바꿈
+- 딱딱한 뉴스체 금지
+- 팬덤 댓글 유도
+- 원문에 없는 사실 지어내지 말 것
+- JSON 외 아무 말도 하지 말 것
+
+기사:
 {req.source_text}
 
-반드시 JSON만 출력해.
+아래 JSON 형식으로 출력:
 
 {{
-  "formatted_script": "시간대별 쇼츠 대본 전체",
-  "captions": ["자막1", "자막2", "자막3"],
-  "titles": ["제목1", "제목2", "제목3", "제목4", "제목5"],
-  "recommended_title": "추천 제목",
-  "thumbnail_texts": ["썸네일1", "썸네일2", "썸네일3"],
-  "view_points": ["조회수포인트1", "조회수포인트2", "조회수포인트3", "조회수포인트4", "조회수포인트5"],
-  "comment_hooks": ["댓글유도1", "댓글유도2"],
-  "strong_version": "더 강한 조회수 버전 전체",
-  "tts_text": "AI 음성으로 읽을 대본만 자연스럽게 이어붙인 텍스트"
+  "formatted_script": "",
+  "captions": [],
+  "titles": [],
+  "recommended_title": "",
+  "thumbnail_texts": [],
+  "view_points": [],
+  "comment_hooks": [],
+  "strong_version": "",
+  "tts_text": ""
 }}
 """
 
     try:
         response = openai_client.chat.completions.create(
-            model="gpt-4.1-nano",
+            model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": "너는 한국 유튜브 쇼츠 대본 제작 전문가다."},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.85,
+            temperature=1.0,
             response_format={"type": "json_object"},
         )
 
@@ -162,6 +231,7 @@ def make_tts(req: TTSRequest):
 
     except HTTPException:
         raise
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"TTS 생성 실패: {str(e)}")
 
@@ -211,14 +281,18 @@ def make_srt(req: SRTRequest):
 @app.get("/audio/{filename}")
 def get_audio(filename: str):
     file_path = os.path.join(AUDIO_DIR, filename)
+
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
+
     return FileResponse(file_path, media_type="audio/mpeg", filename=filename)
 
 
 @app.get("/srt/{filename}")
 def get_srt(filename: str):
     file_path = os.path.join(SRT_DIR, filename)
+
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
+
     return FileResponse(file_path, media_type="text/plain", filename=filename)
