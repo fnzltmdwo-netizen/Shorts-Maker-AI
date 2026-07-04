@@ -3,9 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
-from PIL import Image, ImageDraw, ImageFont
-
-import os, json, uuid, requests, re, textwrap, subprocess, shutil
+import os
+import uuid
+import re
+import json
+import requests
+import subprocess
+import wave
+import contextlib
 
 app = FastAPI()
 
@@ -31,437 +36,355 @@ os.makedirs(SRT_DIR, exist_ok=True)
 os.makedirs(VIDEO_DIR, exist_ok=True)
 
 
-class ShortsRequest(BaseModel):
-    source_text: str
-    tone: str = "승재 쇼츠형"
+class ScriptRequest(BaseModel):
+    article: str
 
 
-class TTSRequest(BaseModel):
+class VoiceRequest(BaseModel):
     text: str
     voice_id: str | None = None
 
 
-class SRTRequest(BaseModel):
-    captions: list[str]
-
-
 class VideoRequest(BaseModel):
-    audio_url: str
-    captions: list[str] = []
-    tts_text: str | None = None
+    title: str | None = ""
+    script: str | None = ""
+    tts_text: str | None = ""
+    voice_url: str
+
+
+def clean_text(text: str) -> str:
+    text = text or ""
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+
+def format_srt_time(seconds: float) -> str:
+    millis = int((seconds - int(seconds)) * 1000)
+    seconds = int(seconds)
+    hrs = seconds // 3600
+    mins = (seconds % 3600) // 60
+    secs = seconds % 60
+    return f"{hrs:02}:{mins:02}:{secs:02},{millis:03}"
+
+
+def get_audio_duration(audio_path: str) -> float:
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            audio_path,
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    try:
+        return float(result.stdout.strip())
+    except Exception:
+        return 30.0
+
+
+def split_subtitle_text(text: str, max_len: int = 16):
+    text = clean_text(text)
+
+    text = text.replace("!", "! ")
+    text = text.replace("?", "? ")
+    text = text.replace(".", ". ")
+    text = text.replace("…", "… ")
+
+    words = text.split()
+    chunks = []
+    current = ""
+
+    for word in words:
+        test = (current + " " + word).strip()
+
+        if len(test) <= max_len:
+            current = test
+        else:
+            if current:
+                chunks.append(current)
+            current = word
+
+    if current:
+        chunks.append(current)
+
+    return chunks
+
+
+def make_srt_from_tts_text(tts_text: str, audio_duration: float, srt_path: str):
+    chunks = split_subtitle_text(tts_text, max_len=16)
+
+    if not chunks:
+        chunks = ["자막을 생성하지 못했습니다."]
+
+    weights = []
+
+    for chunk in chunks:
+        weight = len(chunk)
+
+        if chunk.endswith(("다", "요", "죠", "까", "!", "?", ".", "…")):
+            weight += 5
+
+        if "," in chunk or "，" in chunk:
+            weight += 2
+
+        weights.append(weight)
+
+    total_weight = sum(weights)
+    current_time = 0.0
+    srt = ""
+
+    for i, chunk in enumerate(chunks, start=1):
+        duration = audio_duration * (weights[i - 1] / total_weight)
+
+        duration = max(duration, 1.05)
+
+        start = current_time
+        end = min(start + duration, audio_duration)
+
+        if i == len(chunks):
+            end = audio_duration
+
+        srt += f"{i}\n"
+        srt += f"{format_srt_time(start)} --> {format_srt_time(end)}\n"
+        srt += f"{chunk}\n\n"
+
+        current_time = end
+
+    with open(srt_path, "w", encoding="utf-8") as f:
+        f.write(srt)
 
 
 @app.get("/")
-def home():
-    return {"message": "Shorts Maker AI API is running!"}
+def root():
+    return {
+        "message": "Shorts Maker AI API is running!",
+        "status": "ok"
+    }
 
 
-@app.post("/make-shorts")
-def make_shorts(req: ShortsRequest):
-    if not req.source_text.strip():
-        raise HTTPException(status_code=400, detail="내용을 입력해주세요.")
+@app.post("/generate-script")
+def generate_script(req: ScriptRequest):
+    article = clean_text(req.article)
+
+    if not article:
+        raise HTTPException(status_code=400, detail="기사 내용이 비어있습니다.")
 
     prompt = f"""
-너는 한국 유튜브 연예뉴스 쇼츠 전문 작가다.
+너는 한국 유튜브 쇼츠 전문 작가다.
 
-중요:
-이 작업은 단순 기사 요약이 아니다.
-목표는 사람들이 스크롤을 멈추고 끝까지 보게 만드는 30초 쇼츠 대본 제작이다.
+아래 기사 내용을 바탕으로 30~45초 분량의 쇼츠 대본을 만들어라.
 
-조회수가 잘 나오는 쇼츠의 핵심은:
-1. 첫 2초 hook
-2. 감정/반전
-3. 댓글 유도
+규칙:
+- 첫 문장은 반드시 강한 후킹으로 시작
+- 연성 기사, 훈훈한 기사, 챌린지, 근황 기사라도 반드시 흥미로운 hook를 만들어라
+- 말투는 자연스럽고 빠르게 몰입되는 승재 스타일
+- 너무 딱딱한 뉴스 말투 금지
+- 자막으로 보기 좋게 짧은 문장 사용
+- 과장 가능하지만 허위 사실은 만들지 말 것
+- 결과는 JSON으로만 출력
 
-[핵심 스타일]
-- 친구가 흥미로운 연예계 썰을 풀어주는 느낌
-- 첫 2초 안에 반드시 시청자를 붙잡아야 한다
-- 평범하게 시작하면 실패다
-- 문장은 짧고 강하게
-- 자막처럼 줄바꿈
-- 감정, 반전, 궁금증 적극 활용
-
-[말투 규칙]
-- 너무 딱딱한 기사체 금지
-- "~습니다"와 "~는데요"를 자연스럽게 섞어라
-- "~했어요", "~나왔어요", "~보였어요", "~같아요" 금지
-- 뉴스 앵커처럼 기계적으로 말하지 마라
-- 연성 기사(훈훈함/챌린지/근황)라도 반드시 흥미로운 hook를 만들어라
-
-[절대 금지]
-절대로 아래처럼 시작하지 마라:
-- OOO가 공개됐습니다
-- OOO가 함께했습니다
-- OOO가 출연했습니다
-- OOO가 춤을 췄습니다
-- OOO가 영상을 올렸습니다
-
-[훅 규칙]
-첫 문장은 반드시 아래 4개 중 하나:
-1. 충격형
-2. 반전형
-3. 궁금증형
-4. 감정형
-
-[연성 기사 hook 예시]
-- 팬들이 난리 난 이유가 있었습니다.
-- 예상 못한 투샷이 공개됐습니다.
-- 분위기가 심상치 않았습니다.
-- 모두가 미소 지은 순간이었습니다.
-- 뜻밖의 조합이 화제가 됐습니다.
-
-[구성]
-반드시 아래 형식:
-
-🎬 쇼츠 대본 (유형명 🔥)
-
-0~2초 (훅)
-
-2~6초
-
-6~10초
-
-10~14초
-
-14~18초
-
-18~23초
-
-23~28초 (댓글 유도)
-
-[좋은 예시]
-
-🎬 쇼츠 대본 (연성 기사형 🔥)
-
-0~2초 (훅)
-"팬들이 난리 난 이유가 있었습니다."
-
-2~6초
-"김다현과 전유진의
-뜻밖의 투샷이 공개됐습니다"
-
-6~10초
-"두 사람은 챌린지 영상에서
-완벽한 호흡을 보여줬습니다"
-
-10~14초
-"서로 다른 매력인데도
-케미가 유독 빛났습니다"
-
-14~18초
-"특히 자연스러운 미소가
-팬심을 제대로 흔들었습니다"
-
-18~23초
-"댓글에는 둘 조합 미쳤다는
-반응이 쏟아졌습니다"
-
-23~28초 (댓글 유도)
-"여러분은 두 사람 케미 어떻게 보셨나요?"
-
-[추가 출력]
-- 제목 5개
-- 추천 제목 1개
-- 썸네일 문구 3개
-- 조회수 포인트 5개
-- 댓글 유도 2개
-- strong_version은 hook를 더 강하게 재작성
-- captions는 tts_text를 짧게 나눈 문장으로 6~8개 생성
-- tts_text는 formatted_script의 실제 대본 문장만 자연스럽게 이어붙인 음성용 텍스트
-
-원문:
-{req.source_text}
-
-반드시 JSON만 출력.
-
+JSON 형식:
 {{
-  "formatted_script": "전체 대본",
-  "captions": ["자막1", "자막2"],
-  "titles": ["제목1", "제목2", "제목3", "제목4", "제목5"],
-  "recommended_title": "추천 제목",
-  "thumbnail_texts": ["썸네일1", "썸네일2", "썸네일3"],
-  "view_points": ["포인트1", "포인트2", "포인트3", "포인트4", "포인트5"],
-  "comment_hooks": ["댓글1", "댓글2"],
-  "strong_version": "강한 버전",
-  "tts_text": "음성용 텍스트"
+  "title": "쇼츠 제목",
+  "script": "화면에 보여줄 대본",
+  "tts_text": "AI 음성으로 읽을 대본"
 }}
+
+기사:
+{article}
 """
 
     try:
         response = openai_client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {"role": "system", "content": "너는 한국 유튜브 쇼츠 대본 제작 전문가다. 반드시 JSON만 출력한다."},
+                {"role": "system", "content": "너는 한국 유튜브 쇼츠 대본 전문가다."},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.82,
-            response_format={"type": "json_object"},
+            temperature=0.8,
         )
 
-        return json.loads(response.choices[0].message.content)
+        content = response.choices[0].message.content.strip()
+
+        content = content.replace("```json", "").replace("```", "").strip()
+        data = json.loads(content)
+
+        return {
+            "title": data.get("title", ""),
+            "script": data.get("script", ""),
+            "tts_text": data.get("tts_text", data.get("script", "")),
+        }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"AI 생성 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"대본 생성 실패: {str(e)}")
 
 
-@app.post("/make-tts")
-def make_tts(req: TTSRequest):
+@app.post("/generate-voice")
+def generate_voice(req: VoiceRequest):
+    text = clean_text(req.text)
+
+    if not text:
+        raise HTTPException(status_code=400, detail="음성 생성용 텍스트가 비어있습니다.")
+
     if not ELEVENLABS_API_KEY:
         raise HTTPException(status_code=500, detail="ELEVENLABS_API_KEY가 없습니다.")
 
-    if not req.text.strip():
-        raise HTTPException(status_code=400, detail="음성으로 만들 텍스트가 없습니다.")
+    voice_id = req.voice_id or DEFAULT_VOICE_ID
+    filename = f"{uuid.uuid4()}.mp3"
+    audio_path = os.path.join(AUDIO_DIR, filename)
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+
+    headers = {
+        "xi-api-key": ELEVENLABS_API_KEY,
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.45,
+            "similarity_boost": 0.8,
+            "style": 0.35,
+            "use_speaker_boost": True,
+        },
+    }
 
     try:
-        voice_id = req.voice_id or DEFAULT_VOICE_ID
-        file_id = str(uuid.uuid4())
-        file_path = os.path.join(AUDIO_DIR, f"{file_id}.mp3")
+        r = requests.post(url, headers=headers, json=payload, timeout=120)
+        r.raise_for_status()
 
-        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-
-        headers = {
-            "xi-api-key": ELEVENLABS_API_KEY,
-            "Content-Type": "application/json",
-            "Accept": "audio/mpeg",
-        }
-
-        payload = {
-            "text": req.text,
-            "model_id": "eleven_multilingual_v2",
-            "voice_settings": {
-                "stability": 0.45,
-                "similarity_boost": 0.8,
-                "style": 0.35,
-                "use_speaker_boost": True,
-            },
-        }
-
-        r = requests.post(url, headers=headers, json=payload, timeout=90)
-
-        if r.status_code != 200:
-            raise HTTPException(status_code=500, detail=f"ElevenLabs 오류: {r.text}")
-
-        with open(file_path, "wb") as f:
+        with open(audio_path, "wb") as f:
             f.write(r.content)
 
-        return {"audio_url": f"/audio/{file_id}.mp3"}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"TTS 생성 실패: {str(e)}")
-
-
-def srt_time(seconds: float):
-    h = int(seconds // 3600)
-    m = int((seconds % 3600) // 60)
-    s = int(seconds % 60)
-    ms = int((seconds - int(seconds)) * 1000)
-    return f"{h:02}:{m:02}:{s:02},{ms:03}"
-
-
-@app.post("/make-srt")
-def make_srt(req: SRTRequest):
-    if not req.captions:
-        raise HTTPException(status_code=400, detail="자막 데이터가 없습니다.")
-
-    try:
-        file_id = str(uuid.uuid4())
-        file_path = os.path.join(SRT_DIR, f"{file_id}.srt")
-
-        lines = []
-        current = 0.0
-
-        for i, caption in enumerate(req.captions, start=1):
-            text = re.sub(r"\s+", " ", caption).strip()
-            duration = max(2.0, min(4.0, len(text) * 0.12))
-            start = current
-            end = current + duration
-
-            lines.append(str(i))
-            lines.append(f"{srt_time(start)} --> {srt_time(end)}")
-            lines.append(text)
-            lines.append("")
-
-            current = end
-
-        with open(file_path, "w", encoding="utf-8") as f:
-            f.write("\n".join(lines))
-
-        return {"srt_url": f"/srt/{file_id}.srt"}
+        return {
+            "voice_url": f"/audio/{filename}",
+            "tts_text": text,
+        }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"SRT 생성 실패: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"음성 생성 실패: {str(e)}")
 
 
-def get_font(size=84):
-    try:
-        return ImageFont.truetype("NotoSansKR-Bold.ttf", size)
-    except:
-        return ImageFont.load_default()
+@app.get("/audio/{filename}")
+def get_audio(filename: str):
+    path = os.path.join(AUDIO_DIR, filename)
 
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="오디오 파일을 찾을 수 없습니다.")
 
-def split_tts_to_captions(tts_text: str):
-    if not tts_text:
-        return []
-
-    text = re.sub(r"\s+", " ", tts_text).strip()
-
-    parts = re.split(r"(?<=[.!?。！？]|습니다|합니다|했습니다|됐습니다|있습니다|입니다|는데요|나요|까요)\s*", text)
-    parts = [p.strip() for p in parts if p and p.strip()]
-
-    captions = []
-
-    for part in parts:
-        if len(part) <= 22:
-            captions.append(part)
-        else:
-            chunks = re.findall(r".{1,18}(?:\s|$)", part)
-            for chunk in chunks:
-                chunk = chunk.strip()
-                if chunk:
-                    captions.append(chunk)
-
-    merged = []
-    buffer = ""
-
-    for cap in captions:
-        if not buffer:
-            buffer = cap
-        elif len(buffer + " " + cap) <= 24:
-            buffer += " " + cap
-        else:
-            merged.append(buffer)
-            buffer = cap
-
-    if buffer:
-        merged.append(buffer)
-
-    return merged[:12]
-
-
-def make_caption_image(text, output_path):
-    width, height = 720, 1280
-
-    img = Image.new("RGB", (width, height), color=(25, 25, 25))
-    draw = ImageDraw.Draw(img)
-
-    font = get_font(76)
-
-    clean_text = re.sub(r"\s+", " ", text).strip()
-    wrapped = textwrap.fill(clean_text, width=8)
-
-    bbox = draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=20)
-    text_w = bbox[2] - bbox[0]
-    text_h = bbox[3] - bbox[1]
-
-    x = (width - text_w) / 2
-    y = (height - text_h) / 2
-
-    draw.multiline_text(
-        (x, y),
-        wrapped,
-        font=font,
-        fill=(255, 230, 0),
-        spacing=20,
-        align="center",
-        stroke_width=5,
-        stroke_fill=(0, 0, 0),
-    )
-
-    img.save(output_path)
-
-
-def get_audio_duration(audio_path):
-    try:
-        cmd = [
-            "ffprobe",
-            "-v", "error",
-            "-show_entries", "format=duration",
-            "-of", "default=noprint_wrappers=1:nokey=1",
-            audio_path,
-        ]
-        result = subprocess.run(cmd, capture_output=True, text=True, timeout=20)
-        return float(result.stdout.strip())
-    except Exception:
-        return 28.0
+    return FileResponse(path, media_type="audio/mpeg")
 
 
 @app.post("/make-video")
 def make_video(req: VideoRequest):
-    if not req.audio_url:
-        raise HTTPException(status_code=400, detail="audio_url이 없습니다.")
-
-    if not shutil.which("ffmpeg"):
-        raise HTTPException(status_code=500, detail="서버에 ffmpeg가 없습니다.")
-
     try:
-        filename = req.audio_url.split("/")[-1]
-        audio_path = os.path.join(AUDIO_DIR, filename)
+        voice_url = req.voice_url
+
+        if voice_url.startswith("http"):
+            audio_response = requests.get(voice_url, timeout=120)
+            audio_response.raise_for_status()
+            audio_filename = f"{uuid.uuid4()}.mp3"
+            audio_path = os.path.join(AUDIO_DIR, audio_filename)
+
+            with open(audio_path, "wb") as f:
+                f.write(audio_response.content)
+        else:
+            audio_filename = voice_url.split("/")[-1]
+            audio_path = os.path.join(AUDIO_DIR, audio_filename)
 
         if not os.path.exists(audio_path):
             raise HTTPException(status_code=404, detail="음성 파일을 찾을 수 없습니다.")
 
-        video_captions = split_tts_to_captions(req.tts_text or "")
-
-        if not video_captions:
-            video_captions = req.captions
-
-        if not video_captions:
-            raise HTTPException(status_code=400, detail="영상 자막으로 만들 텍스트가 없습니다.")
-
-        file_id = str(uuid.uuid4())
-        work_dir = os.path.join(VIDEO_DIR, file_id)
-        os.makedirs(work_dir, exist_ok=True)
-
-        video_path = os.path.join(VIDEO_DIR, f"{file_id}.mp4")
-        concat_path = os.path.join(work_dir, "concat.txt")
+        video_id = str(uuid.uuid4())
+        srt_path = os.path.join(SRT_DIR, f"{video_id}.srt")
+        output_path = os.path.join(VIDEO_DIR, f"{video_id}.mp4")
 
         audio_duration = get_audio_duration(audio_path)
-        caption_duration = max(1.2, audio_duration / len(video_captions))
 
-        image_paths = []
+        subtitle_text = clean_text(req.tts_text) or clean_text(req.script)
 
-        for i, caption in enumerate(video_captions):
-            img_path = os.path.join(work_dir, f"frame_{i}.png")
-            make_caption_image(caption, img_path)
-            image_paths.append(img_path)
+        make_srt_from_tts_text(
+            tts_text=subtitle_text,
+            audio_duration=audio_duration,
+            srt_path=srt_path,
+        )
 
-        with open(concat_path, "w", encoding="utf-8") as f:
-            for img_path in image_paths:
-                f.write(f"file '{os.path.abspath(img_path)}'\n")
-                f.write(f"duration {caption_duration}\n")
-            f.write(f"file '{os.path.abspath(image_paths[-1])}'\n")
+        font_path = "NotoSansKR-Bold.ttf"
+
+        if not os.path.exists(font_path):
+            raise HTTPException(status_code=500, detail="NotoSansKR-Bold.ttf 폰트 파일이 없습니다.")
+
+        safe_srt_path = srt_path.replace("\\", "/")
+        safe_font_path = font_path.replace("\\", "/")
+
+        vf = (
+            f"subtitles='{safe_srt_path}':"
+            f"fontsdir='.'"
+            f":force_style='"
+            f"FontName=Noto Sans KR,"
+            f"FontSize=22,"
+            f"PrimaryColour=&H00FFFFFF,"
+            f"OutlineColour=&H00000000,"
+            f"BorderStyle=1,"
+            f"Outline=3,"
+            f"Shadow=1,"
+            f"Alignment=2,"
+            f"MarginV=130"
+            f"'"
+        )
 
         cmd = [
             "ffmpeg",
             "-y",
-            "-f", "concat",
-            "-safe", "0",
-            "-i", concat_path,
-            "-i", audio_path,
-            "-vf", "scale=720:1280,fps=24,format=yuv420p",
-            "-c:v", "libx264",
-            "-preset", "ultrafast",
-            "-c:a", "aac",
-            "-b:a", "128k",
+            "-f",
+            "lavfi",
+            "-i",
+            "color=c=black:s=720x1280:r=30",
+            "-i",
+            audio_path,
+            "-vf",
+            vf,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "ultrafast",
+            "-crf",
+            "28",
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
             "-shortest",
-            video_path,
+            output_path,
         ]
 
         result = subprocess.run(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=180,
         )
 
         if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"ffmpeg 오류: {result.stderr[-1000:]}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"ffmpeg 영상 생성 실패: {result.stderr}"
+            )
 
         return {
-            "video_url": f"/video/{file_id}.mp4",
-            "video_captions": video_captions
+            "video_url": f"/video/{video_id}.mp4",
+            "srt_url": f"/srt/{video_id}.srt",
+            "duration": audio_duration,
         }
 
     except HTTPException:
@@ -470,25 +393,21 @@ def make_video(req: VideoRequest):
         raise HTTPException(status_code=500, detail=f"영상 생성 실패: {str(e)}")
 
 
-@app.get("/audio/{filename}")
-def get_audio(filename: str):
-    file_path = os.path.join(AUDIO_DIR, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
-    return FileResponse(file_path, media_type="audio/mpeg", filename=filename)
+@app.get("/video/{filename}")
+def get_video(filename: str):
+    path = os.path.join(VIDEO_DIR, filename)
+
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="영상 파일을 찾을 수 없습니다.")
+
+    return FileResponse(path, media_type="video/mp4")
 
 
 @app.get("/srt/{filename}")
 def get_srt(filename: str):
-    file_path = os.path.join(SRT_DIR, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
-    return FileResponse(file_path, media_type="text/plain", filename=filename)
+    path = os.path.join(SRT_DIR, filename)
 
+    if not os.path.exists(path):
+        raise HTTPException(status_code=404, detail="SRT 파일을 찾을 수 없습니다.")
 
-@app.get("/video/{filename}")
-def get_video(filename: str):
-    file_path = os.path.join(VIDEO_DIR, filename)
-    if not os.path.exists(file_path):
-        raise HTTPException(status_code=404, detail="파일을 찾을 수 없습니다.")
-    return FileResponse(file_path, media_type="video/mp4", filename=filename)
+    return FileResponse(path, media_type="text/plain")
