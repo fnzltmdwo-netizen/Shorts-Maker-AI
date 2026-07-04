@@ -10,7 +10,6 @@ import json
 import requests
 import subprocess
 import base64
-import random
 
 app = FastAPI()
 
@@ -73,13 +72,9 @@ def format_srt_time(seconds: float) -> str:
 def get_audio_duration(audio_path: str) -> float:
     result = subprocess.run(
         [
-            "ffprobe",
-            "-v",
-            "error",
-            "-show_entries",
-            "format=duration",
-            "-of",
-            "default=noprint_wrappers=1:nokey=1",
+            "ffprobe", "-v", "error",
+            "-show_entries", "format=duration",
+            "-of", "default=noprint_wrappers=1:nokey=1",
             audio_path,
         ],
         stdout=subprocess.PIPE,
@@ -97,14 +92,13 @@ def decode_base64_image(image_base64: str, save_path: str):
     if "," in image_base64:
         image_base64 = image_base64.split(",", 1)[1]
 
-    image_base64 = image_base64.strip()
-    image_bytes = base64.b64decode(image_base64)
+    image_bytes = base64.b64decode(image_base64.strip())
 
     with open(save_path, "wb") as f:
         f.write(image_bytes)
 
 
-def make_srt_from_alignment(alignment: dict, srt_path: str, max_len: int = 15):
+def make_srt_from_alignment(alignment: dict, srt_path: str, max_len: int = 9):
     chars = alignment.get("characters", [])
     starts = alignment.get("character_start_times_seconds", [])
     ends = alignment.get("character_end_times_seconds", [])
@@ -132,7 +126,7 @@ def make_srt_from_alignment(alignment: dict, srt_path: str, max_len: int = 15):
         if ch in [".", "!", "?", "…", "\n"]:
             should_cut = True
 
-        if ch == " " and len(cur_text.strip()) >= 10:
+        if ch == " " and len(cur_text.strip()) >= 6:
             should_cut = True
 
         if should_cut and cur_text.strip():
@@ -175,7 +169,7 @@ def make_fallback_srt(tts_text: str, audio_duration: float, srt_path: str):
     for word in words:
         test = (cur + " " + word).strip()
 
-        if len(test) <= 15:
+        if len(test) <= 9:
             cur = test
         else:
             if cur:
@@ -219,29 +213,17 @@ def make_image_background_video(image_paths, duration, output_path):
     segment_paths = []
     per_image_duration = duration / len(image_paths)
 
-    for idx, img_path in enumerate(image_paths):
+    for img_path in image_paths:
         segment_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_seg.mp4")
         segment_paths.append(segment_path)
 
         frames = max(30, int(per_image_duration * 30))
 
-        if idx % 4 == 0:
-            zoom_expr = "min(zoom+0.0015,1.12)"
-        elif idx % 4 == 1:
-            zoom_expr = "max(1.12-on*0.0012,1.0)"
-        elif idx % 4 == 2:
-            zoom_expr = "min(zoom+0.0010,1.10)"
-        else:
-            zoom_expr = "min(zoom+0.0018,1.15)"
-
-        vf = (
-            "scale=720:1280:force_original_aspect_ratio=increase,"
-            "crop=720:1280,"
-            f"zoompan=z='{zoom_expr}':"
-            "x='iw/2-(iw/zoom/2)':"
-            "y='ih/2-(ih/zoom/2)':"
-            f"d={frames}:s=720x1280:fps=30,"
-            "eq=contrast=1.05:brightness=0.01:saturation=1.05"
+        filter_complex = (
+            "[0:v]"
+            "scale=720:1280:force_original_aspect_ratio=decrease,"
+            "pad=720:1280:(ow-iw)/2:(oh-ih)/2:black,"
+            "setsar=1"
         )
 
         cmd = [
@@ -254,12 +236,10 @@ def make_image_background_video(image_paths, duration, output_path):
             "1",
             "-i",
             img_path,
-            "-vf",
-            vf,
-            "-t",
-            str(per_image_duration),
-            "-r",
-            "30",
+            "-filter_complex",
+            filter_complex,
+            "-frames:v",
+            str(frames),
             "-c:v",
             "libx264",
             "-preset",
@@ -317,6 +297,7 @@ def make_image_background_video(image_paths, duration, output_path):
 
     return output_path
 
+
 @app.get("/")
 def root():
     return {
@@ -362,14 +343,8 @@ JSON 형식:
         response = openai_client.chat.completions.create(
             model="gpt-4.1-mini",
             messages=[
-                {
-                    "role": "system",
-                    "content": "너는 한국 유튜브 쇼츠 대본 전문가다."
-                },
-                {
-                    "role": "user",
-                    "content": prompt
-                },
+                {"role": "system", "content": "너는 한국 유튜브 쇼츠 대본 전문가다."},
+                {"role": "user", "content": prompt},
             ],
             temperature=0.8,
         )
@@ -490,7 +465,7 @@ def make_video(req: VideoRequest):
         if align_path and os.path.exists(align_path):
             with open(align_path, "r", encoding="utf-8") as f:
                 alignment = json.load(f)
-            make_srt_from_alignment(alignment, srt_path, max_len=15)
+            make_srt_from_alignment(alignment, srt_path, max_len=9)
         else:
             subtitle_text = clean_text(req.tts_text) or clean_text(req.script)
             make_fallback_srt(subtitle_text, audio_duration, srt_path)
@@ -522,20 +497,24 @@ def make_video(req: VideoRequest):
             f"subtitles='{safe_srt_path}':fontsdir='.'"
             f":force_style='"
             f"FontName=Noto Sans KR,"
-            f"FontSize=24,"
+            f"FontSize=34,"
             f"PrimaryColour=&H0000FFFF,"
+            f"BackColour=&H99000000,"
             f"OutlineColour=&H00000000,"
-            f"BorderStyle=1,"
-            f"Outline=3,"
-            f"Shadow=1,"
-            f"Alignment=2,"
-            f"MarginV=130"
+            f"BorderStyle=4,"
+            f"Outline=1,"
+            f"Shadow=0,"
+            f"Alignment=5,"
+            f"MarginV=0"
             f"'"
         )
 
         cmd = [
             "ffmpeg",
             "-y",
+            "-hide_banner",
+            "-loglevel",
+            "error",
             *video_input_args,
             "-i",
             audio_path,
@@ -563,7 +542,8 @@ def make_video(req: VideoRequest):
         )
 
         if result.returncode != 0:
-            raise HTTPException(status_code=500, detail=f"ffmpeg 영상 생성 실패: {result.stderr}")
+            error_tail = "\n".join(result.stderr.splitlines()[-20:])
+            raise HTTPException(status_code=500, detail=f"ffmpeg 영상 생성 실패:\n{error_tail}")
 
         return {
             "video_url": f"/video/{video_id}.mp4",
