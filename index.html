@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>쇼츠 대본 자동 생성기</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #f4f6ff;
+      font-family: Arial, sans-serif;
+      color: #222;
+    }
+
+    .container {
+      max-width: 850px;
+      margin: 30px auto;
+      padding: 28px;
+      background: white;
+      border-radius: 18px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 8px;
+      font-size: 30px;
+    }
+
+    .sub {
+      text-align: center;
+      color: #666;
+      margin-bottom: 28px;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-top: 18px;
+      margin-bottom: 8px;
+    }
+
+    textarea, select {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #ddd;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 220px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    select {
+      background: white;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 22px;
+      padding: 16px;
+      border: none;
+      border-radius: 14px;
+      background: #4f63ff;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #384cff;
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      margin-top: 24px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #4f63ff;
+    }
+
+    .result {
+      display: none;
+      margin-top: 30px;
+    }
+
+    .card {
+      background: #f8f9ff;
+      border: 1px solid #e2e5ff;
+      border-radius: 16px;
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 20px;
+      color: #384cff;
+    }
+
+    .copy-btn {
+      width: auto;
+      padding: 9px 14px;
+      margin-top: 10px;
+      font-size: 14px;
+      border-radius: 10px;
+      background: #222;
+    }
+
+    .copy-btn:hover {
+      background: #000;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      line-height: 1.6;
+      font-family: Arial, sans-serif;
+      font-size: 15px;
+      margin: 0;
+    }
+
+    ul {
+      padding-left: 20px;
+      line-height: 1.7;
+    }
+
+    .error {
+      display: none;
+      background: #fff1f1;
+      color: #d00000;
+      padding: 14px;
+      border-radius: 12px;
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>🎬 쇼츠 대본 자동 생성기</h1>
+    <p class="sub">기사나 주제를 붙여넣으면 쇼츠용 대본으로 바꿔줘요</p>
+
+    <label>원문 / 기사 / 주제</label>
+    <textarea id="sourceText" placeholder="여기에 기사 내용이나 만들고 싶은 주제를 붙여넣어줘"></textarea>
+
+    <label>톤 선택</label>
+    <select id="tone">
+      <option value="연예뉴스">연예뉴스</option>
+      <option value="사건사고">사건사고</option>
+      <option value="감동스토리">감동스토리</option>
+      <option value="정보전달">정보전달</option>
+      <option value="썰 푸는 느낌">썰 푸는 느낌</option>
+      <option value="논란 정리">논란 정리</option>
+    </select>
+
+    <label>길이</label>
+    <select id="length">
+      <option value="30초">30초</option>
+      <option value="45초">45초</option>
+      <option value="60초" selected>60초</option>
+      <option value="90초">90초</option>
+    </select>
+
+    <label>스타일</label>
+    <select id="style">
+      <option value="자극적이지만 선 넘지 않게">자극적이지만 선 넘지 않게</option>
+      <option value="뉴스처럼 깔끔하게">뉴스처럼 깔끔하게</option>
+      <option value="감정 몰입 강하게">감정 몰입 강하게</option>
+      <option value="궁금증 유발형">궁금증 유발형</option>
+      <option value="반전 강조형">반전 강조형</option>
+    </select>
+
+    <button id="generateBtn" onclick="generateShorts()">쇼츠 대본 만들기</button>
+
+    <div class="loading" id="loading">AI가 쇼츠 대본 만드는 중...</div>
+    <div class="error" id="errorBox"></div>
+
+    <div class="result" id="result">
+      <div class="card">
+        <h2>🔥 제목</h2>
+        <pre id="title"></pre>
+        <button class="copy-btn" onclick="copyText('title')">복사</button>
+      </div>
+
+      <div class="card">
+        <h2>⚡ 첫 3초 훅</h2>
+        <pre id="hook"></pre>
+        <button class="copy-btn" onclick="copyText('hook')">복사</button>
+      </div>
+
+      <div class="card">
+        <h2>🎙️ 전체 대본</h2>
+        <pre id="script"></pre>
+        <button class="copy-btn" onclick="copyText('script')">복사</button>
+      </div>
+
+      <div class="card">
+        <h2>💬 자막 분할</h2>
+        <ul id="captions"></ul>
+      </div>
+
+      <div class="card">
+        <h2>🖼️ 썸네일 문구</h2>
+        <pre id="thumbnail"></pre>
+        <button class="copy-btn" onclick="copyText('thumbnail')">복사</button>
+      </div>
+
+      <div class="card">
+        <h2># 해시태그</h2>
+        <pre id="hashtags"></pre>
+        <button class="copy-btn" onclick="copyText('hashtags')">복사</button>
+      </div>
+
+      <div class="card">
+        <h2>🎨 이미지 프롬프트</h2>
+        <ul id="imagePrompts"></ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API_URL = "https://너의-백엔드-주소.onrender.com/make-shorts";
+
+    async function generateShorts() {
+      const sourceText = document.getElementById("sourceText").value.trim();
+      const tone = document.getElementById("tone").value;
+      const length = document.getElementById("length").value;
+      const style = document.getElementById("style").value;
+
+      const loading = document.getElementById("loading");
+      const result = document.getElementById("result");
+      const errorBox = document.getElementById("errorBox");
+      const btn = document.getElementById("generateBtn");
+
+      if (!sourceText) {
+        alert("원문이나 주제를 입력해줘!");
+        return;
+      }
+
+      loading.style.display = "block";
+      result.style.display = "none";
+      errorBox.style.display = "none";
+      btn.disabled = true;
+      btn.innerText = "생성 중...";
+
+      try {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            source_text: sourceText,
+            tone: tone,
+            length: length,
+            style: style
+          })
+        });
+
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.detail || "API 호출 실패");
+        }
+
+        const data = await res.json();
+
+        document.getElementById("title").innerText = data.title || "";
+        document.getElementById("hook").innerText = data.hook || "";
+        document.getElementById("script").innerText = data.script || "";
+        document.getElementById("thumbnail").innerText = data.thumbnail_text || "";
+        document.getElementById("hashtags").innerText = (data.hashtags || []).join(" ");
+
+        const captionsUl = document.getElementById("captions");
+        captionsUl.innerHTML = "";
+        (data.captions || []).forEach(item => {
+          const li = document.createElement("li");
+          li.innerText = item;
+          captionsUl.appendChild(li);
+        });
+
+        const promptsUl = document.getElementById("imagePrompts");
+        promptsUl.innerHTML = "";
+        (data.image_prompts || []).forEach(item => {
+          const li = document.createElement("li");
+          li.innerText = item;
+          promptsUl.appendChild(li);
+        });
+
+        result.style.display = "block";
+
+      } catch (err) {
+        errorBox.innerText = "오류 발생: " + err.message;
+        errorBox.style.display = "block";
+      } finally {
+        loading.style.display = "none";
+        btn.disabled = false;
+        btn.innerText = "쇼츠 대본 만들기";
+      }
+    }
+
+    function copyText(id) {
+      const text = document.getElementById(id).innerText;
+      navigator.clipboard.writeText(text);
+      alert("복사됐어!");
+    }
+  </script>
+</body>
+</html>
