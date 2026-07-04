@@ -3,13 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
-import os
-import uuid
-import re
-import json
-import requests
-import subprocess
-import base64
+import os, uuid, re, json, requests, subprocess, base64
 
 app = FastAPI()
 
@@ -81,7 +75,6 @@ def get_audio_duration(audio_path: str) -> float:
         stderr=subprocess.PIPE,
         text=True,
     )
-
     try:
         return float(result.stdout.strip())
     except Exception:
@@ -91,9 +84,7 @@ def get_audio_duration(audio_path: str) -> float:
 def decode_base64_image(image_base64: str, save_path: str):
     if "," in image_base64:
         image_base64 = image_base64.split(",", 1)[1]
-
     image_bytes = base64.b64decode(image_base64.strip())
-
     with open(save_path, "wb") as f:
         f.write(image_bytes)
 
@@ -147,7 +138,6 @@ def make_srt_from_alignment(alignment: dict, srt_path: str, max_len: int = 9):
         })
 
     srt = ""
-
     for i, c in enumerate(chunks, start=1):
         start = c["start"]
         end = max(c["end"], start + 0.35)
@@ -168,7 +158,6 @@ def make_fallback_srt(tts_text: str, audio_duration: float, srt_path: str):
 
     for word in words:
         test = (cur + " " + word).strip()
-
         if len(test) <= 9:
             cur = test
         else:
@@ -187,9 +176,7 @@ def make_fallback_srt(tts_text: str, audio_duration: float, srt_path: str):
     srt = ""
 
     for i, c in enumerate(chunks, start=1):
-        dur = audio_duration * (len(c) / total)
-        dur = max(dur, 0.8)
-
+        dur = max(audio_duration * (len(c) / total), 0.8)
         start = now
         end = min(now + dur, audio_duration)
 
@@ -213,16 +200,39 @@ def make_image_background_video(image_paths, duration, output_path):
     segment_paths = []
     per_image_duration = duration / len(image_paths)
 
-    for img_path in image_paths:
+    effects = ["left", "top", "right", "bottom"]
+
+    for idx, img_path in enumerate(image_paths):
         segment_path = os.path.join(TEMP_DIR, f"{uuid.uuid4()}_seg.mp4")
         segment_paths.append(segment_path)
 
         frames = max(30, int(per_image_duration * 30))
+        effect = effects[idx % len(effects)]
+
+        center_x = "(W-w)/2"
+        center_y = "(H-h)/2"
+
+        if effect == "left":
+            x_expr = "if(lt(t,0.45),-w+(t/0.45)*((W-w)/2+w),(W-w)/2)"
+            y_expr = center_y
+        elif effect == "right":
+            x_expr = "if(lt(t,0.45),W-(t/0.45)*(W-(W-w)/2),(W-w)/2)"
+            y_expr = center_y
+        elif effect == "top":
+            x_expr = center_x
+            y_expr = "if(lt(t,0.45),-h+(t/0.45)*((H-h)/2+h),(H-h)/2)"
+        else:
+            x_expr = center_x
+            y_expr = "if(lt(t,0.45),H-(t/0.45)*(H-(H-h)/2),(H-h)/2)"
 
         filter_complex = (
+            f"color=c=black:s=720x1280:r=30:d={per_image_duration}[bg];"
             "[0:v]"
             "scale=720:1280:force_original_aspect_ratio=decrease,"
-            "pad=720:1280:(ow-iw)/2:(oh-ih)/2:black,"
+            "format=rgba"
+            "[fg];"
+            "[bg][fg]"
+            f"overlay=x='{x_expr}':y='{y_expr}':shortest=1,"
             "setsar=1"
         )
 
@@ -232,29 +242,17 @@ def make_image_background_video(image_paths, duration, output_path):
             "-hide_banner",
             "-loglevel",
             "error",
-            "-loop",
-            "1",
-            "-i",
-            img_path,
-            "-filter_complex",
-            filter_complex,
-            "-frames:v",
-            str(frames),
-            "-c:v",
-            "libx264",
-            "-preset",
-            "ultrafast",
-            "-pix_fmt",
-            "yuv420p",
+            "-loop", "1",
+            "-i", img_path,
+            "-filter_complex", filter_complex,
+            "-frames:v", str(frames),
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-pix_fmt", "yuv420p",
             segment_path,
         ]
 
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         if result.returncode != 0:
             error_tail = "\n".join(result.stderr.splitlines()[-20:])
@@ -271,25 +269,17 @@ def make_image_background_video(image_paths, duration, output_path):
         "ffmpeg",
         "-y",
         "-hide_banner",
-        "-loglevel",
-        "error",
-        "-f",
-        "concat",
-        "-safe",
-        "0",
-        "-i",
-        concat_list_path,
-        "-c",
-        "copy",
+        "-loglevel", "error",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", concat_list_path,
+        "-c:v", "libx264",
+        "-preset", "ultrafast",
+        "-pix_fmt", "yuv420p",
         output_path,
     ]
 
-    result = subprocess.run(
-        cmd_concat,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
+    result = subprocess.run(cmd_concat, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
     if result.returncode != 0:
         error_tail = "\n".join(result.stderr.splitlines()[-20:])
@@ -300,10 +290,7 @@ def make_image_background_video(image_paths, duration, output_path):
 
 @app.get("/")
 def root():
-    return {
-        "message": "Shorts Maker AI API is running!",
-        "status": "ok"
-    }
+    return {"message": "Shorts Maker AI API is running!", "status": "ok"}
 
 
 @app.post("/generate-script")
@@ -407,7 +394,6 @@ def generate_voice(req: VoiceRequest):
 
         if not audio_base64:
             raise Exception("audio_base64가 없습니다.")
-
         if not alignment:
             raise Exception("alignment가 없습니다.")
 
@@ -437,10 +423,8 @@ def make_video(req: VideoRequest):
             audio_response.raise_for_status()
             file_id = str(uuid.uuid4())
             audio_path = os.path.join(AUDIO_DIR, f"{file_id}.mp3")
-
             with open(audio_path, "wb") as f:
                 f.write(audio_response.content)
-
             align_path = ""
         else:
             audio_filename = voice_url.split("/")[-1]
@@ -482,10 +466,8 @@ def make_video(req: VideoRequest):
             video_input_args = ["-i", bg_video_path]
         else:
             video_input_args = [
-                "-f",
-                "lavfi",
-                "-i",
-                "color=c=black:s=720x1280:r=30"
+                "-f", "lavfi",
+                "-i", "color=c=black:s=720x1280:r=30"
             ]
 
         if not os.path.exists("NotoSansKR-Bold.ttf"):
@@ -504,8 +486,8 @@ def make_video(req: VideoRequest):
             f"BorderStyle=4,"
             f"Outline=1,"
             f"Shadow=0,"
-            f"Alignment=10,"
-            f"MarginV=360"
+            f"Alignment=2,"
+            f"MarginV=430"
             f"'"
         )
 
@@ -513,33 +495,20 @@ def make_video(req: VideoRequest):
             "ffmpeg",
             "-y",
             "-hide_banner",
-            "-loglevel",
-            "error",
+            "-loglevel", "error",
             *video_input_args,
-            "-i",
-            audio_path,
-            "-vf",
-            vf,
-            "-c:v",
-            "libx264",
-            "-preset",
-            "ultrafast",
-            "-crf",
-            "27",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "128k",
+            "-i", audio_path,
+            "-vf", vf,
+            "-c:v", "libx264",
+            "-preset", "ultrafast",
+            "-crf", "27",
+            "-c:a", "aac",
+            "-b:a", "128k",
             "-shortest",
             output_path,
         ]
 
-        result = subprocess.run(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-        )
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 
         if result.returncode != 0:
             error_tail = "\n".join(result.stderr.splitlines()[-20:])
@@ -561,38 +530,30 @@ def make_video(req: VideoRequest):
 @app.get("/audio/{filename}")
 def get_audio(filename: str):
     path = os.path.join(AUDIO_DIR, filename)
-
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="오디오 파일을 찾을 수 없습니다.")
-
     return FileResponse(path, media_type="audio/mpeg")
 
 
 @app.get("/alignment/{filename}")
 def get_alignment(filename: str):
     path = os.path.join(ALIGN_DIR, filename)
-
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="alignment 파일을 찾을 수 없습니다.")
-
     return FileResponse(path, media_type="application/json")
 
 
 @app.get("/video/{filename}")
 def get_video(filename: str):
     path = os.path.join(VIDEO_DIR, filename)
-
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="영상 파일을 찾을 수 없습니다.")
-
     return FileResponse(path, media_type="video/mp4")
 
 
 @app.get("/srt/{filename}")
 def get_srt(filename: str):
     path = os.path.join(SRT_DIR, filename)
-
     if not os.path.exists(path):
         raise HTTPException(status_code=404, detail="SRT 파일을 찾을 수 없습니다.")
-
     return FileResponse(path, media_type="text/plain")
