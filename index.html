@@ -4,31 +4,165 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>승재 쇼츠 자동 생성기</title>
+
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: white; }
-    .container { max-width: 900px; margin: 0 auto; padding: 30px 18px; }
-    h1 { text-align: center; margin-bottom: 10px; }
-    .desc { text-align: center; color: #aaa; margin-bottom: 28px; }
-    textarea { width: 100%; min-height: 220px; padding: 16px; border-radius: 12px; border: none; resize: vertical; font-size: 15px; box-sizing: border-box; }
-    button { width: 100%; margin-top: 12px; padding: 15px; border: none; border-radius: 12px; background: #ff3b5c; color: white; font-size: 17px; font-weight: bold; cursor: pointer; }
-    button:disabled { background: #555; cursor: not-allowed; }
-    .card { margin-top: 22px; background: #1f1f1f; border-radius: 16px; padding: 18px; box-sizing: border-box; }
-    .card h2 { margin-top: 0; font-size: 20px; }
-    pre { white-space: pre-wrap; word-break: keep-all; line-height: 1.65; background: #151515; padding: 14px; border-radius: 12px; color: #f1f1f1; }
-    audio, video { width: 100%; margin-top: 12px; border-radius: 14px; }
-    .status { margin-top: 14px; color: #ffd166; text-align: center; font-weight: bold; }
-    .hidden { display: none; }
-    a { color: #7cc7ff; word-break: break-all; }
-    .small { color: #aaa; font-size: 13px; line-height: 1.5; }
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 30px 18px;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .desc {
+      text-align: center;
+      color: #aaa;
+      margin-bottom: 28px;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 220px;
+      padding: 16px;
+      border-radius: 12px;
+      border: none;
+      resize: vertical;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+
+    .upload-box {
+      margin-top: 14px;
+      padding: 18px;
+      background: #1f1f1f;
+      border: 2px dashed #555;
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    input[type="file"] {
+      width: 100%;
+      margin-top: 10px;
+      color: #ddd;
+    }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .preview-grid img {
+      width: 100%;
+      height: 130px;
+      object-fit: cover;
+      border-radius: 12px;
+      background: #333;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 12px;
+      padding: 15px;
+      border: none;
+      border-radius: 12px;
+      background: #ff3b5c;
+      color: white;
+      font-size: 17px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background: #555;
+      cursor: not-allowed;
+    }
+
+    .card {
+      margin-top: 22px;
+      background: #1f1f1f;
+      border-radius: 16px;
+      padding: 18px;
+      box-sizing: border-box;
+    }
+
+    .card h2 {
+      margin-top: 0;
+      font-size: 20px;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: keep-all;
+      line-height: 1.65;
+      background: #151515;
+      padding: 14px;
+      border-radius: 12px;
+      color: #f1f1f1;
+    }
+
+    audio,
+    video {
+      width: 100%;
+      margin-top: 12px;
+      border-radius: 14px;
+    }
+
+    .status {
+      margin-top: 14px;
+      color: #ffd166;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    a {
+      color: #7cc7ff;
+      word-break: break-all;
+    }
+
+    .small {
+      color: #aaa;
+      font-size: 13px;
+      line-height: 1.5;
+    }
+
+    .tip {
+      color: #bbb;
+      font-size: 13px;
+      line-height: 1.5;
+      margin-top: 8px;
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
     <h1>승재 쇼츠 자동 생성기</h1>
-    <p class="desc">기사 붙여넣기 → 대본 → AI 음성 → 자막 영상 생성</p>
+    <p class="desc">기사 + 사진 → 대본 → AI 음성 → 자막 쇼츠 영상</p>
 
     <textarea id="articleInput" placeholder="여기에 기사 내용을 붙여넣어줘"></textarea>
+
+    <div class="upload-box">
+      <b>쇼츠 배경 사진 업로드</b>
+      <p class="tip">사진 4장 추천 / 최대 8장까지 가능 / 영상 길이에 맞춰 자동으로 줌인·줌아웃·패닝 효과 적용</p>
+      <input type="file" id="imageInput" multiple accept="image/*" onchange="handleImages()" />
+      <div id="previewGrid" class="preview-grid"></div>
+    </div>
 
     <button id="scriptBtn" onclick="generateScript()">1. 쇼츠 대본 생성</button>
     <button id="voiceBtn" onclick="generateVoice()" disabled>2. AI 음성 생성</button>
@@ -64,6 +198,8 @@
   <script>
     const API_BASE = "https://shorts-maker-api.onrender.com";
 
+    let uploadedImagesBase64 = [];
+
     let shortsData = {
       title: "",
       script: "",
@@ -84,6 +220,42 @@
       if (text) btn.innerText = text;
     }
 
+    function fileToBase64(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    async function handleImages() {
+      const input = document.getElementById("imageInput");
+      const files = Array.from(input.files).slice(0, 8);
+      const previewGrid = document.getElementById("previewGrid");
+
+      uploadedImagesBase64 = [];
+      previewGrid.innerHTML = "";
+
+      if (files.length === 0) {
+        setStatus("");
+        return;
+      }
+
+      setStatus("사진 불러오는 중...");
+
+      for (const file of files) {
+        const base64 = await fileToBase64(file);
+        uploadedImagesBase64.push(base64);
+
+        const img = document.createElement("img");
+        img.src = base64;
+        previewGrid.appendChild(img);
+      }
+
+      setStatus(`사진 ${uploadedImagesBase64.length}장 준비 완료`);
+    }
+
     async function generateScript() {
       const article = document.getElementById("articleInput").value.trim();
 
@@ -101,8 +273,12 @@
 
         const res = await fetch(`${API_BASE}/generate-script`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ article })
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            article: article
+          })
         });
 
         const data = await res.json();
@@ -147,12 +323,17 @@
       try {
         setStatus("AI 음성 생성 중...");
         setLoading("voiceBtn", true, "음성 생성 중...");
+
         document.getElementById("videoBtn").disabled = true;
 
         const res = await fetch(`${API_BASE}/generate-voice`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: shortsData.tts_text })
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            text: shortsData.tts_text
+          })
         });
 
         const data = await res.json();
@@ -191,19 +372,27 @@
         return;
       }
 
+      if (uploadedImagesBase64.length === 0) {
+        const ok = confirm("사진을 선택하지 않았어. 검은 배경으로 만들까?");
+        if (!ok) return;
+      }
+
       try {
-        setStatus("영상 생성 중... 시간이 조금 걸릴 수 있어.");
+        setStatus("영상 생성 중... 사진 효과 적용 중이라 시간이 걸릴 수 있어.");
         setLoading("videoBtn", true, "영상 생성 중...");
 
         const res = await fetch(`${API_BASE}/make-video`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify({
             title: shortsData.title,
             script: shortsData.script,
             tts_text: shortsData.tts_text,
             voice_url: shortsData.voice_url,
-            alignment_url: shortsData.alignment_url
+            alignment_url: shortsData.alignment_url,
+            images: uploadedImagesBase64
           })
         });
 
@@ -227,7 +416,7 @@
 
         document.getElementById("videoBox").classList.remove("hidden");
 
-        setStatus("영상 생성 완료!");
+        setStatus(`영상 생성 완료! 사진 ${data.image_count || 0}장 사용됨`);
       } catch (err) {
         console.error(err);
         alert("영상 생성 실패: " + err.message);
