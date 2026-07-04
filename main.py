@@ -4,7 +4,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from openai import OpenAI
 from PIL import Image, ImageDraw, ImageFont
-from moviepy.editor import ImageClip, AudioFileClip, concatenate_videoclips
+from moviepy import ImageClip, AudioFileClip, concatenate_videoclips
 
 import os, json, uuid, requests, re, textwrap
 
@@ -338,8 +338,8 @@ def make_video(req: VideoRequest):
             clips.append(clip)
 
         video = concatenate_videoclips(clips, method="compose")
-        video = video.set_audio(audio)
-        video = video.set_fps(24)
+        video = video.with_audio(audio)
+        video = video.with_fps(24)
 
         video.write_videofile(
             video_path,
