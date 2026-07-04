@@ -293,30 +293,25 @@ def make_srt(req: SRTRequest):
         raise HTTPException(status_code=500, detail=f"SRT 생성 실패: {str(e)}")
 
 
-def get_font(size=48):
-    font_paths = [
-        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc",
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-    ]
-
-    for path in font_paths:
-        if os.path.exists(path):
-            return ImageFont.truetype(path, size)
-
-    return ImageFont.load_default()
+def get_font(size=84):
+    try:
+        return ImageFont.truetype("NotoSansKR-Bold.ttf", size)
+    except:
+        return ImageFont.load_default()
 
 
 def make_caption_image(text, output_path):
     width, height = 720, 1280
-    img = Image.new("RGB", (width, height), color=(0, 0, 0))
+
+    img = Image.new("RGB", (width, height), color=(25, 25, 25))
     draw = ImageDraw.Draw(img)
 
-    font = get_font(48)
-    clean_text = re.sub(r"\s+", " ", text).strip()
-    wrapped = textwrap.fill(clean_text, width=12)
+    font = get_font(84)
 
-    bbox = draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=16)
+    clean_text = re.sub(r"\s+", " ", text).strip()
+    wrapped = textwrap.fill(clean_text, width=8)
+
+    bbox = draw.multiline_textbbox((0, 0), wrapped, font=font, spacing=20)
     text_w = bbox[2] - bbox[0]
     text_h = bbox[3] - bbox[1]
 
@@ -327,10 +322,10 @@ def make_caption_image(text, output_path):
         (x, y),
         wrapped,
         font=font,
-        fill=(255, 255, 255),
-        spacing=16,
+        fill=(255, 230, 0),
+        spacing=20,
         align="center",
-        stroke_width=2,
+        stroke_width=5,
         stroke_fill=(0, 0, 0),
     )
 
