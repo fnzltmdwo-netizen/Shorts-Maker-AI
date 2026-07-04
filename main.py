@@ -504,8 +504,8 @@ def make_video(req: VideoRequest):
             f"BorderStyle=4,"
             f"Outline=1,"
             f"Shadow=0,"
-            f"Alignment=5,"
-            f"MarginV=0"
+            f"Alignment=10,"
+            f"MarginV=360"
             f"'"
         )
 
