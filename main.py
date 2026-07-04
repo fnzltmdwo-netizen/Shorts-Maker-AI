@@ -263,7 +263,6 @@ def make_image_background_video(image_paths, duration, output_path):
             f"y='{y_expr}':"
             f"d={frames}:s=720x1280:fps=30,"
             "eq=contrast=1.06:brightness=0.02:saturation=1.08,"
-            "vignette=PI/5"
         )
 
         cmd = [
