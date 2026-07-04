@@ -213,17 +213,17 @@ def make_image_background_video(image_paths, duration, output_path):
         center_y = "(H-h)/2"
 
         if effect == "left":
-            x_expr = "if(lt(t,0.45),-w+(t/0.45)*((W-w)/2+w),(W-w)/2)"
+            x_expr = "if(lt(t,0.18),-w+(t/0.18)*((W-w)/2+w),(W-w)/2)"
             y_expr = center_y
         elif effect == "right":
-            x_expr = "if(lt(t,0.45),W-(t/0.45)*(W-(W-w)/2),(W-w)/2)"
+            x_expr = "if(lt(t,0.18),W-(t/0.18)*(W-(W-w)/2),(W-w)/2)"
             y_expr = center_y
         elif effect == "top":
             x_expr = center_x
-            y_expr = "if(lt(t,0.45),-h+(t/0.45)*((H-h)/2+h),(H-h)/2)"
+            y_expr = "if(lt(t,0.18),-h+(t/0.18)*((H-h)/2+h),(H-h)/2)"
         else:
             x_expr = center_x
-            y_expr = "if(lt(t,0.45),H-(t/0.45)*(H-(H-h)/2),(H-h)/2)"
+            y_expr = "if(lt(t,0.18),H-(t/0.18)*(H-(H-h)/2),(H-h)/2)"
 
         filter_complex = (
             f"color=c=black:s=720x1280:r=30:d={per_image_duration}[bg];"
@@ -475,21 +475,21 @@ def make_video(req: VideoRequest):
 
         safe_srt_path = srt_path.replace("\\", "/")
 
-        vf = (
-            f"subtitles='{safe_srt_path}':fontsdir='.'"
-            f":force_style='"
-            f"FontName=Noto Sans KR,"
-            f"FontSize=34,"
-            f"PrimaryColour=&H0000FFFF,"
-            f"BackColour=&H99000000,"
-            f"OutlineColour=&H00000000,"
-            f"BorderStyle=4,"
-            f"Outline=1,"
-            f"Shadow=0,"
-            f"Alignment=2,"
-            f"MarginV=430"
-            f"'"
-        )
+vf = (
+    f"subtitles='{safe_srt_path}':fontsdir='.'"
+    f":force_style='"
+    f"FontName=Noto Sans KR,"
+    f"FontSize=34,"
+    f"PrimaryColour=&H0000FFFF,"
+    f"BackColour=&H99000000,"
+    f"OutlineColour=&H00000000,"
+    f"BorderStyle=4,"
+    f"Outline=1,"
+    f"Shadow=0,"
+    f"Alignment=5,"
+    f"MarginV=0"
+    f"'"
+)
 
         cmd = [
             "ffmpeg",
