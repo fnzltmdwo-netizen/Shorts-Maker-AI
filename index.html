@@ -4,112 +4,22 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>승재 쇼츠 자동 생성기</title>
-
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: white;
-    }
-
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 30px 18px;
-    }
-
-    h1 {
-      text-align: center;
-      margin-bottom: 10px;
-    }
-
-    .desc {
-      text-align: center;
-      color: #aaa;
-      margin-bottom: 28px;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 220px;
-      padding: 16px;
-      border-radius: 12px;
-      border: none;
-      resize: vertical;
-      font-size: 15px;
-      box-sizing: border-box;
-    }
-
-    button {
-      width: 100%;
-      margin-top: 12px;
-      padding: 15px;
-      border: none;
-      border-radius: 12px;
-      background: #ff3b5c;
-      color: white;
-      font-size: 17px;
-      font-weight: bold;
-      cursor: pointer;
-    }
-
-    button:disabled {
-      background: #555;
-      cursor: not-allowed;
-    }
-
-    .card {
-      margin-top: 22px;
-      background: #1f1f1f;
-      border-radius: 16px;
-      padding: 18px;
-      box-sizing: border-box;
-    }
-
-    .card h2 {
-      margin-top: 0;
-      font-size: 20px;
-    }
-
-    pre {
-      white-space: pre-wrap;
-      word-break: keep-all;
-      line-height: 1.65;
-      background: #151515;
-      padding: 14px;
-      border-radius: 12px;
-      color: #f1f1f1;
-    }
-
-    audio,
-    video {
-      width: 100%;
-      margin-top: 12px;
-      border-radius: 14px;
-    }
-
-    .status {
-      margin-top: 14px;
-      color: #ffd166;
-      text-align: center;
-      font-weight: bold;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    a {
-      color: #7cc7ff;
-      word-break: break-all;
-    }
-
-    .small {
-      color: #aaa;
-      font-size: 13px;
-      line-height: 1.5;
-    }
+    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: white; }
+    .container { max-width: 900px; margin: 0 auto; padding: 30px 18px; }
+    h1 { text-align: center; margin-bottom: 10px; }
+    .desc { text-align: center; color: #aaa; margin-bottom: 28px; }
+    textarea { width: 100%; min-height: 220px; padding: 16px; border-radius: 12px; border: none; resize: vertical; font-size: 15px; box-sizing: border-box; }
+    button { width: 100%; margin-top: 12px; padding: 15px; border: none; border-radius: 12px; background: #ff3b5c; color: white; font-size: 17px; font-weight: bold; cursor: pointer; }
+    button:disabled { background: #555; cursor: not-allowed; }
+    .card { margin-top: 22px; background: #1f1f1f; border-radius: 16px; padding: 18px; box-sizing: border-box; }
+    .card h2 { margin-top: 0; font-size: 20px; }
+    pre { white-space: pre-wrap; word-break: keep-all; line-height: 1.65; background: #151515; padding: 14px; border-radius: 12px; color: #f1f1f1; }
+    audio, video { width: 100%; margin-top: 12px; border-radius: 14px; }
+    .status { margin-top: 14px; color: #ffd166; text-align: center; font-weight: bold; }
+    .hidden { display: none; }
+    a { color: #7cc7ff; word-break: break-all; }
+    .small { color: #aaa; font-size: 13px; line-height: 1.5; }
   </style>
 </head>
 
@@ -159,6 +69,7 @@
       script: "",
       tts_text: "",
       voice_url: "",
+      alignment_url: "",
       video_url: "",
       srt_url: ""
     };
@@ -190,12 +101,8 @@
 
         const res = await fetch(`${API_BASE}/generate-script`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            article: article
-          })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ article })
         });
 
         const data = await res.json();
@@ -207,12 +114,18 @@
         shortsData.title = data.title || "";
         shortsData.script = data.script || "";
         shortsData.tts_text = data.tts_text || data.script || "";
+        shortsData.voice_url = "";
+        shortsData.alignment_url = "";
+        shortsData.video_url = "";
+        shortsData.srt_url = "";
 
         document.getElementById("titleOutput").innerText = shortsData.title;
         document.getElementById("scriptOutput").innerText = shortsData.script;
         document.getElementById("ttsOutput").innerText = shortsData.tts_text;
 
         document.getElementById("scriptBox").classList.remove("hidden");
+        document.getElementById("voiceBox").classList.add("hidden");
+        document.getElementById("videoBox").classList.add("hidden");
         document.getElementById("voiceBtn").disabled = false;
 
         setStatus("대본 생성 완료! 이제 AI 음성을 만들어줘.");
@@ -234,17 +147,12 @@
       try {
         setStatus("AI 음성 생성 중...");
         setLoading("voiceBtn", true, "음성 생성 중...");
-
         document.getElementById("videoBtn").disabled = true;
 
         const res = await fetch(`${API_BASE}/generate-voice`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            text: shortsData.tts_text
-          })
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: shortsData.tts_text })
         });
 
         const data = await res.json();
@@ -253,7 +161,8 @@
           throw new Error(data.detail || "음성 생성 실패");
         }
 
-        shortsData.voice_url = data.voice_url;
+        shortsData.voice_url = data.voice_url || "";
+        shortsData.alignment_url = data.alignment_url || "";
         shortsData.tts_text = data.tts_text || shortsData.tts_text;
 
         const fullAudioUrl = `${API_BASE}${shortsData.voice_url}`;
@@ -263,6 +172,7 @@
           `음성 파일: <a href="${fullAudioUrl}" target="_blank">${fullAudioUrl}</a>`;
 
         document.getElementById("voiceBox").classList.remove("hidden");
+        document.getElementById("videoBox").classList.add("hidden");
         document.getElementById("videoBtn").disabled = false;
 
         setStatus("음성 생성 완료! 이제 영상 만들기를 눌러줘.");
@@ -287,14 +197,13 @@
 
         const res = await fetch(`${API_BASE}/make-video`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title: shortsData.title,
             script: shortsData.script,
             tts_text: shortsData.tts_text,
-            voice_url: shortsData.voice_url
+            voice_url: shortsData.voice_url,
+            alignment_url: shortsData.alignment_url
           })
         });
 
@@ -304,8 +213,8 @@
           throw new Error(data.detail || "영상 생성 실패");
         }
 
-        shortsData.video_url = data.video_url;
-        shortsData.srt_url = data.srt_url;
+        shortsData.video_url = data.video_url || "";
+        shortsData.srt_url = data.srt_url || "";
 
         const fullVideoUrl = `${API_BASE}${shortsData.video_url}`;
         const fullSrtUrl = `${API_BASE}${shortsData.srt_url}`;
