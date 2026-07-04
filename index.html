@@ -79,6 +79,12 @@ pre {
   background: black;
   font-size: 14px;
 }
+
+audio {
+  display: block;
+  margin-top: 20px;
+  width: 100%;
+}
 </style>
 </head>
 
@@ -148,10 +154,15 @@ async function generateShorts() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        text: scriptText,
-        voice: "nova"
+        source_text: sourceText,
+        tone: tone
       })
     });
+
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "API 오류");
+    }
 
     const data = await res.json();
 
@@ -174,7 +185,7 @@ async function generateShorts() {
 async function makeTTS() {
   const scriptText = document.getElementById("script").innerText;
 
-  if (!scriptText) {
+  if (!scriptText || scriptText.trim() === "") {
     alert("먼저 대본 생성해줘");
     return;
   }
@@ -186,20 +197,30 @@ async function makeTTS() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        text: scriptText
+        text: scriptText,
+        voice: "nova"
       })
     });
 
-    const data = await res.json();
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || "TTS 실패");
+    }
 
+    const data = await res.json();
     const audioUrl = API_URL + data.audio_url;
 
+    const oldAudio = document.getElementById("ttsPlayer");
+    if (oldAudio) oldAudio.remove();
+
     const audio = document.createElement("audio");
+    audio.id = "ttsPlayer";
     audio.controls = true;
     audio.src = audioUrl;
-    audio.style.marginTop = "20px";
 
-    document.getElementById("script").parentElement.appendChild(audio);
+    document.getElementById("script")
+      .parentElement
+      .appendChild(audio);
 
   } catch (err) {
     alert("TTS 실패: " + err.message);
