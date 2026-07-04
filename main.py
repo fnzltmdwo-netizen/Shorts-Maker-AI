@@ -21,7 +21,7 @@ ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 AUDIO_DIR = "audios"
 os.makedirs(AUDIO_DIR, exist_ok=True)
 
-DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"  # Sarah 계열 기본 보이스
+DEFAULT_VOICE_ID = "m3gJBS8OofDJfycyA2Ip"  
 
 
 class ShortsRequest(BaseModel):
