@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
+from PIL import Image, ImageDraw, ImageFont
 import os
 import re
 import uuid
@@ -11,6 +12,7 @@ import requests
 import csv
 from pathlib import Path
 from urllib.parse import quote_plus
+from io import BytesIO
 
 app = FastAPI()
 
@@ -83,14 +85,8 @@ def safe_filename(name: str) -> str:
     if not name:
         return "shorts_project"
 
-    # 프리미어가 싫어하는 특수문자 제거
-    name = re.sub(r'[^가-힣a-zA-Z0-9 _-]', "", name)
-
-    # 공백 정리
-    name = re.sub(r"\s+", " ", name)
-    name = name.strip()
-
-    # 너무 긴 폴더명 방지
+    name = re.sub(r"[^가-힣a-zA-Z0-9 _-]", "", name)
+    name = re.sub(r"\s+", " ", name).strip()
     name = name[:30]
 
     if not name:
@@ -360,4 +356,308 @@ async def generate_pack(
         path=zip_path,
         filename=f"{zip_title}_{job_id}.zip",
         media_type="application/zip",
+    )
+
+
+def get_font(size: int):
+    font_candidates = [
+        BASE_DIR / "NotoSansKR-Bold.ttf",
+        BASE_DIR / "NanumGothicBold.ttf",
+        Path("/usr/share/fonts/truetype/nanum/NanumGothicBold.ttf"),
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"),
+    ]
+
+    for font_path in font_candidates:
+        if font_path.exists():
+            return ImageFont.truetype(str(font_path), size)
+
+    return ImageFont.load_default()
+
+
+def cover_resize(image: Image.Image, target_width: int, target_height: int):
+    image = image.convert("RGB")
+    width, height = image.size
+
+    scale = max(target_width / width, target_height / height)
+
+    new_width = int(width * scale)
+    new_height = int(height * scale)
+
+    resized = image.resize((new_width, new_height), Image.LANCZOS)
+
+    left = (new_width - target_width) // 2
+    top = (new_height - target_height) // 2
+    right = left + target_width
+    bottom = top + target_height
+
+    return resized.crop((left, top, right, bottom))
+
+
+def wrap_thumbnail_text(text: str, max_chars: int = 7, max_lines: int = 4):
+    text = re.sub(r"\s+", " ", text.strip())
+
+    if not text:
+        return [""]
+
+    words = text.split(" ")
+    lines = []
+    current = ""
+
+    for word in words:
+        candidate = word if not current else current + " " + word
+
+        if len(candidate.replace(" ", "")) <= max_chars:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+
+    if current:
+        lines.append(current)
+
+    if len(lines) > max_lines:
+        compact = text.replace(" ", "")
+        lines = [
+            compact[i:i + max_chars]
+            for i in range(0, len(compact), max_chars)
+        ]
+
+    return lines[:max_lines]
+
+
+def fit_font(draw, lines, max_width, max_height, start_size, min_size, stroke_width):
+    font_size = start_size
+
+    while font_size >= min_size:
+        font = get_font(font_size)
+        max_line_width = 0
+        total_height = 0
+
+        for line in lines:
+            bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
+            line_width = bbox[2] - bbox[0]
+            line_height = bbox[3] - bbox[1]
+            max_line_width = max(max_line_width, line_width)
+            total_height += line_height
+
+        total_height += (len(lines) - 1) * 24
+
+        if max_line_width <= max_width and total_height <= max_height:
+            return font, font_size
+
+        font_size -= 6
+
+    return get_font(min_size), min_size
+
+
+def draw_text_lines(
+    draw,
+    lines,
+    font,
+    center_x,
+    start_y,
+    fill,
+    stroke_fill,
+    stroke_width,
+    line_gap,
+):
+    y = start_y
+
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font, stroke_width=stroke_width)
+        width = bbox[2] - bbox[0]
+        height = bbox[3] - bbox[1]
+        x = center_x - width // 2
+
+        draw.text(
+            (x, y),
+            line,
+            font=font,
+            fill=fill,
+            stroke_width=stroke_width,
+            stroke_fill=stroke_fill,
+        )
+
+        y += height + line_gap
+
+
+def draw_center_thumbnail(image: Image.Image, text: str):
+    target_width = 1080
+    target_height = 1920
+
+    canvas = cover_resize(image, target_width, target_height)
+    draw = ImageDraw.Draw(canvas, "RGBA")
+
+    lines = wrap_thumbnail_text(text, max_chars=7, max_lines=4)
+    font, _ = fit_font(
+        draw=draw,
+        lines=lines,
+        max_width=960,
+        max_height=760,
+        start_size=150,
+        min_size=70,
+        stroke_width=10,
+    )
+
+    line_boxes = []
+    max_line_width = 0
+
+    for line in lines:
+        bbox = draw.textbbox((0, 0), line, font=font, stroke_width=10)
+        line_width = bbox[2] - bbox[0]
+        line_height = bbox[3] - bbox[1]
+        max_line_width = max(max_line_width, line_width)
+        line_boxes.append((line, line_width, line_height))
+
+    total_height = sum(h for _, _, h in line_boxes) + (len(line_boxes) - 1) * 28
+
+    box_padding_x = 50
+    box_padding_y = 42
+
+    box_width = min(1040, max_line_width + box_padding_x * 2)
+    box_height = total_height + box_padding_y * 2
+
+    box_left = (target_width - box_width) // 2
+    box_top = (target_height - box_height) // 2
+    box_right = box_left + box_width
+    box_bottom = box_top + box_height
+
+    draw.rounded_rectangle(
+        (box_left, box_top, box_right, box_bottom),
+        radius=34,
+        fill=(0, 0, 0, 150),
+    )
+
+    y = box_top + box_padding_y
+
+    for line, line_width, line_height in line_boxes:
+        x = (target_width - line_width) // 2
+
+        draw.text(
+            (x, y),
+            line,
+            font=font,
+            fill=(255, 221, 0, 255),
+            stroke_width=10,
+            stroke_fill=(0, 0, 0, 255),
+        )
+
+        y += line_height + 28
+
+    return canvas
+
+
+def draw_top_thumbnail(image: Image.Image, text: str):
+    target_width = 1080
+    target_height = 1920
+
+    canvas = cover_resize(image, target_width, target_height)
+    draw = ImageDraw.Draw(canvas, "RGBA")
+
+    draw.rectangle((0, 0, target_width, 520), fill=(0, 0, 0, 105))
+
+    lines = wrap_thumbnail_text(text, max_chars=9, max_lines=3)
+    font, _ = fit_font(
+        draw=draw,
+        lines=lines,
+        max_width=980,
+        max_height=390,
+        start_size=130,
+        min_size=68,
+        stroke_width=9,
+    )
+
+    draw_text_lines(
+        draw=draw,
+        lines=lines,
+        font=font,
+        center_x=target_width // 2,
+        start_y=95,
+        fill=(255, 255, 255, 255),
+        stroke_fill=(80, 0, 120, 255),
+        stroke_width=9,
+        line_gap=24,
+    )
+
+    return canvas
+
+
+def draw_bottom_thumbnail(image: Image.Image, text: str):
+    target_width = 1080
+    target_height = 1920
+
+    canvas = cover_resize(image, target_width, target_height)
+    draw = ImageDraw.Draw(canvas, "RGBA")
+
+    draw.rectangle((0, 1350, target_width, target_height), fill=(0, 0, 0, 165))
+
+    lines = wrap_thumbnail_text(text, max_chars=8, max_lines=3)
+    font, _ = fit_font(
+        draw=draw,
+        lines=lines,
+        max_width=980,
+        max_height=420,
+        start_size=145,
+        min_size=72,
+        stroke_width=10,
+    )
+
+    draw_text_lines(
+        draw=draw,
+        lines=lines,
+        font=font,
+        center_x=target_width // 2,
+        start_y=1430,
+        fill=(255, 225, 0, 255),
+        stroke_fill=(0, 0, 0, 255),
+        stroke_width=10,
+        line_gap=26,
+    )
+
+    return canvas
+
+
+def draw_thumbnail_by_template(image: Image.Image, text: str, template: str):
+    if template == "top":
+        return draw_top_thumbnail(image, text)
+
+    if template == "bottom":
+        return draw_bottom_thumbnail(image, text)
+
+    return draw_center_thumbnail(image, text)
+
+
+@app.post("/generate-thumbnail")
+async def generate_thumbnail(
+    title: str = Form("thumbnail"),
+    thumbnail_text: str = Form(...),
+    template: str = Form("center"),
+    image: UploadFile = File(...),
+):
+    if not thumbnail_text.strip():
+        raise HTTPException(status_code=400, detail="썸네일 문구가 비어있습니다.")
+
+    if not image.filename:
+        raise HTTPException(status_code=400, detail="이미지가 없습니다.")
+
+    content = await image.read()
+
+    try:
+        source_image = Image.open(BytesIO(content)).convert("RGB")
+    except Exception:
+        raise HTTPException(status_code=400, detail="이미지 파일을 열 수 없습니다.")
+
+    safe_title = safe_filename(title)
+    job_id = str(uuid.uuid4())[:8]
+
+    thumbnail = draw_thumbnail_by_template(source_image, thumbnail_text, template)
+
+    output_path = OUTPUT_DIR / f"thumbnail_{zip_safe_filename(safe_title)}_{job_id}.jpg"
+    thumbnail.save(output_path, "JPEG", quality=95)
+
+    return FileResponse(
+        path=output_path,
+        filename=f"thumbnail_{zip_safe_filename(safe_title)}.jpg",
+        media_type="image/jpeg",
     )
