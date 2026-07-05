@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -113,8 +113,18 @@ def safe_filename(name: str) -> str:
 
 
 def zip_safe_filename(name: str) -> str:
-    name = safe_filename(name)
-    return name.replace(" ", "_")
+    return safe_filename(name).replace(" ", "_")
+
+
+def safe_upload_filename(filename: str) -> str:
+    filename = Path(filename).name
+    filename = re.sub(r'[\\/:*?"<>|]', "", filename)
+    filename = filename.strip(" .")
+
+    if not filename:
+        filename = "image.jpg"
+
+    return filename[:80]
 
 
 def make_google_links(name: str):
@@ -251,37 +261,6 @@ def parse_script(script: str):
     return blocks
 
 
-def seconds_to_srt_time(seconds: float) -> str:
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    millis = int((seconds - int(seconds)) * 1000)
-
-    return f"{hours:02}:{minutes:02}:{secs:02},{millis:03}"
-
-
-def create_srt(blocks, srt_path: Path):
-    lines = []
-
-    for index, block in enumerate(blocks, start=1):
-        start = seconds_to_srt_time(block["start"])
-        end = seconds_to_srt_time(block["end"])
-
-        lines.append(str(index))
-        lines.append(f"{start} --> {end}")
-        lines.append(block["text"])
-        lines.append("")
-
-    srt_path.write_text("\n".join(lines), encoding="utf-8")
-
-
-def create_original_script_txt(original_script: str, txt_path: Path):
-    txt_path.write_text(
-        original_script.strip(),
-        encoding="utf-8-sig",
-    )
-
-
 def generate_elevenlabs_mp3(text: str, output_path: Path):
     if not ELEVENLABS_API_KEY:
         raise HTTPException(status_code=500, detail="ELEVENLABS_API_KEY가 없습니다.")
@@ -315,28 +294,11 @@ def generate_elevenlabs_mp3(text: str, output_path: Path):
     output_path.write_bytes(response.content)
 
 
-def create_premiere_guide(blocks, guide_path: Path, title: str):
-    lines = []
-    lines.append("프리미어 작업 가이드")
-    lines.append("")
-    lines.append(f"프로젝트 제목: {title}")
-    lines.append("")
-    lines.append("1. 1.mp3, 2.mp3, 3.mp3 순서대로 A1 트랙에 배치")
-    lines.append("2. 사진은 각 구간 길이에 맞게 V1 트랙에 배치")
-    lines.append("3. 자막은 직접 프리미어 Essential Graphics에서 제작")
-    lines.append("4. subtitles.srt는 참고용 기본 자막입니다")
-    lines.append("5. 대본.txt는 입력한 원본 대본 그대로 저장한 파일입니다")
-    lines.append("")
-    lines.append("컷별 구성")
-    lines.append("")
-
-    for index, block in enumerate(blocks, start=1):
-        lines.append(f"{index}. {block['start']}~{block['end']}초")
-        lines.append(f"음성 파일: {index}.mp3")
-        lines.append(f"내용: {block['text']}")
-        lines.append("")
-
-    guide_path.write_text("\n".join(lines), encoding="utf-8-sig")
+def create_original_script_txt(original_script: str, txt_path: Path):
+    txt_path.write_text(
+        original_script.strip(),
+        encoding="utf-8-sig",
+    )
 
 
 @app.post("/parse-script")
@@ -357,14 +319,18 @@ def parse_script_api(request: ScriptRequest):
 
 
 @app.post("/generate-pack")
-def generate_pack(request: ScriptRequest):
-    if not request.script.strip():
+async def generate_pack(
+    title: str = Form("shorts_project"),
+    script: str = Form(...),
+    images: list[UploadFile] = File(default=[]),
+):
+    if not script.strip():
         raise HTTPException(status_code=400, detail="대본이 비어있습니다.")
 
-    title = safe_filename(request.title)
+    title = safe_filename(title)
     zip_title = zip_safe_filename(title)
 
-    blocks = parse_script(request.script)
+    blocks = parse_script(script)
 
     if not blocks:
         raise HTTPException(status_code=400, detail="시간 형식을 찾지 못했습니다.")
@@ -374,13 +340,27 @@ def generate_pack(request: ScriptRequest):
     project_dir = job_dir / title
     project_dir.mkdir(parents=True, exist_ok=True)
 
+    create_original_script_txt(script, project_dir / "대본.txt")
+
     for index, block in enumerate(blocks, start=1):
         mp3_path = project_dir / f"{index}.mp3"
         generate_elevenlabs_mp3(block["text"], mp3_path)
 
-    create_srt(blocks, project_dir / "subtitles.srt")
-    create_original_script_txt(request.script, project_dir / "대본.txt")
-    create_premiere_guide(blocks, project_dir / "premiere_guide.txt", title)
+    for index, image in enumerate(images, start=1):
+        if not image.filename:
+            continue
+
+        original_name = safe_upload_filename(image.filename)
+        ext = Path(original_name).suffix.lower()
+
+        if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
+            ext = ".jpg"
+
+        image_name = f"이미지{index:02d}_{Path(original_name).stem}{ext}"
+        image_path = project_dir / image_name
+
+        content = await image.read()
+        image_path.write_bytes(content)
 
     zip_path = OUTPUT_DIR / f"{zip_title}_{job_id}.zip"
 
