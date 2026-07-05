@@ -339,7 +339,7 @@ async def generate_pack(
     create_original_script_txt(script, project_dir / "대본.txt")
 
     for index, block in enumerate(blocks, start=1):
-        mp3_path = project_dir / f"{index}.mp3"
+        mp3_path = project_dir / f"audio_{index:02d}.mp3"
         generate_elevenlabs_mp3(block["text"], mp3_path)
 
     for index, image in enumerate(images, start=1):
