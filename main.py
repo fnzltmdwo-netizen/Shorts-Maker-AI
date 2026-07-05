@@ -44,7 +44,11 @@ class ScriptRequest(BaseModel):
 
 
 class TitleRequest(BaseModel):
-    article: str
+    article_title: str = ""
+    article_body: str = ""
+    person_name: str = ""
+    tone: str = "자극적이지만 과장 없는 트로트 뉴스형"
+    count: int = 10
 
 
 def load_trot_people():
@@ -674,8 +678,14 @@ async def generate_thumbnail(
 
 @app.post("/generate-shorts-titles")
 def generate_shorts_titles(request: TitleRequest):
-    if not request.article.strip():
-        raise HTTPException(status_code=400, detail="기사 내용이 비어있습니다.")
+    article_title = request.article_title.strip()
+    article_body = request.article_body.strip()
+    person_name = request.person_name.strip()
+    tone = request.tone.strip()
+    count = max(1, min(request.count, 20))
+
+    if not article_title and not article_body:
+        raise HTTPException(status_code=400, detail="기사 제목이나 본문이 비어있습니다.")
 
     if not openai_client:
         raise HTTPException(status_code=500, detail="OPENAI_API_KEY가 없습니다.")
@@ -683,37 +693,29 @@ def generate_shorts_titles(request: TitleRequest):
     prompt = f"""
 너는 한국 유튜브 쇼츠 트로트/연예 채널 제목 전문가다.
 
-아래 기사 내용을 바탕으로 유튜브 쇼츠 제목 10개와 썸네일 문구 5개를 만들어라.
+아래 기사 정보를 바탕으로 유튜브 쇼츠 제목 {count}개, 썸네일 문구 {count}개, 태그 10개를 만들어라.
 
 조건:
 - 제목은 15~35자 정도
-- 너무 과장된 허위 낚시 금지
-- 궁금증은 만들되 기사 내용 안에서만 작성
-- 트로트 팬들이 클릭할 만한 말투
-- 사람 이름이 있으면 제목에 자연스럽게 포함
-- 결과는 반드시 아래 형식으로 출력
+- 허위 낚시 금지
+- 기사 내용 안에서만 작성
+- 분위기: {tone}
+- 인물명: {person_name if person_name else "기사에서 추론"}
+- JSON 형식으로만 출력
+- 코드블록 금지
 
-[쇼츠제목]
-1. 제목
-2. 제목
-3. 제목
-4. 제목
-5. 제목
-6. 제목
-7. 제목
-8. 제목
-9. 제목
-10. 제목
+출력 형식:
+{{
+  "titles": ["제목1", "제목2"],
+  "thumbnail_texts": ["메인문구\\n강조문구", "메인문구\\n강조문구"],
+  "tags": ["#태그1", "#태그2"]
+}}
 
-[썸네일문구]
-1. 메인문구 / 강조문구
-2. 메인문구 / 강조문구
-3. 메인문구 / 강조문구
-4. 메인문구 / 강조문구
-5. 메인문구 / 강조문구
+기사 제목:
+{article_title}
 
-기사:
-{request.article}
+기사 본문:
+{article_body}
 """
 
     try:
@@ -723,9 +725,15 @@ def generate_shorts_titles(request: TitleRequest):
         )
 
         text = response.output_text.strip()
+        text = text.replace("```json", "").replace("```", "").strip()
+
+        import json
+        data = json.loads(text)
 
         return {
-            "result": text
+            "titles": data.get("titles", []),
+            "thumbnail_texts": data.get("thumbnail_texts", []),
+            "tags": data.get("tags", []),
         }
 
     except Exception as e:
