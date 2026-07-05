@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from PIL import Image, ImageDraw, ImageFont
+from openai import OpenAI
 import os
 import re
 import uuid
@@ -27,6 +28,9 @@ app.add_middleware(
 ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY")
 ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL")
 
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
+
 BASE_DIR = Path(__file__).resolve().parent
 OUTPUT_DIR = BASE_DIR / "outputs"
 TROT_CSV_PATH = BASE_DIR / "trot_people.csv"
@@ -37,6 +41,10 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 class ScriptRequest(BaseModel):
     script: str
     title: str = "shorts_project"
+
+
+class TitleRequest(BaseModel):
+    article: str
 
 
 def load_trot_people():
@@ -72,10 +80,11 @@ TROT_PEOPLE = load_trot_people()
 @app.get("/")
 def root():
     return {
-        "message": "Shorts Maker AI v2",
+        "message": "Shorts Maker AI v6",
         "status": "running",
         "trot_people_count": len(TROT_PEOPLE),
         "csv_loaded": TROT_CSV_PATH.exists(),
+        "openai_ready": bool(openai_client),
     }
 
 
@@ -661,3 +670,63 @@ async def generate_thumbnail(
         filename=f"thumbnail_{zip_safe_filename(safe_title)}.jpg",
         media_type="image/jpeg",
     )
+
+
+@app.post("/generate-shorts-titles")
+def generate_shorts_titles(request: TitleRequest):
+    if not request.article.strip():
+        raise HTTPException(status_code=400, detail="기사 내용이 비어있습니다.")
+
+    if not openai_client:
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY가 없습니다.")
+
+    prompt = f"""
+너는 한국 유튜브 쇼츠 트로트/연예 채널 제목 전문가다.
+
+아래 기사 내용을 바탕으로 유튜브 쇼츠 제목 10개와 썸네일 문구 5개를 만들어라.
+
+조건:
+- 제목은 15~35자 정도
+- 너무 과장된 허위 낚시 금지
+- 궁금증은 만들되 기사 내용 안에서만 작성
+- 트로트 팬들이 클릭할 만한 말투
+- 사람 이름이 있으면 제목에 자연스럽게 포함
+- 결과는 반드시 아래 형식으로 출력
+
+[쇼츠제목]
+1. 제목
+2. 제목
+3. 제목
+4. 제목
+5. 제목
+6. 제목
+7. 제목
+8. 제목
+9. 제목
+10. 제목
+
+[썸네일문구]
+1. 메인문구 / 강조문구
+2. 메인문구 / 강조문구
+3. 메인문구 / 강조문구
+4. 메인문구 / 강조문구
+5. 메인문구 / 강조문구
+
+기사:
+{request.article}
+"""
+
+    try:
+        response = openai_client.responses.create(
+            model="gpt-5-mini",
+            input=prompt,
+        )
+
+        text = response.output_text.strip()
+
+        return {
+            "result": text
+        }
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
