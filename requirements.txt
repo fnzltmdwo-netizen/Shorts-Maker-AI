@@ -4,3 +4,4 @@ openai
 requests
 pydantic
 pillow
+python-multipart
