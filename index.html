@@ -3,13 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <title>Shorts Maker AI - Audio Pack</title>
+  <title>Shorts Maker AI</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -27,10 +24,10 @@
     }
 
     .card {
-      background: #ffffff;
+      background: #fff;
       border-radius: 24px;
       padding: 32px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
     }
 
     h1 {
@@ -40,10 +37,39 @@
     }
 
     .subtitle {
-      margin: 0 0 28px;
+      margin: 0 0 24px;
       text-align: center;
       color: #666;
       line-height: 1.6;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+
+    .tab {
+      flex: 1;
+      padding: 14px;
+      border-radius: 14px;
+      border: none;
+      font-weight: 800;
+      cursor: pointer;
+      background: #f1f1f1;
+    }
+
+    .tab.active {
+      background: #ffb703;
+      color: #111;
+    }
+
+    .section {
+      display: none;
+    }
+
+    .section.active {
+      display: block;
     }
 
     .label {
@@ -54,7 +80,7 @@
 
     textarea {
       width: 100%;
-      min-height: 360px;
+      min-height: 340px;
       resize: vertical;
       border: 2px solid #eee;
       border-radius: 16px;
@@ -65,8 +91,24 @@
       font-family: inherit;
     }
 
-    textarea:focus {
+    textarea:focus, select:focus {
       border-color: #ffb703;
+    }
+
+    select {
+      width: 100%;
+      border: 2px solid #eee;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 16px;
+      background: white;
+    }
+
+    .filter-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin: 16px 0;
     }
 
     .buttons {
@@ -98,18 +140,14 @@
       color: #111;
     }
 
-    .primary:hover:not(:disabled) {
-      background: #ffa600;
-      transform: translateY(-1px);
-    }
-
     .secondary {
       background: #f1f1f1;
       color: #333;
     }
 
+    .primary:hover:not(:disabled),
     .secondary:hover:not(:disabled) {
-      background: #e6e6e6;
+      transform: translateY(-1px);
     }
 
     .status {
@@ -139,17 +177,12 @@
       color: #b00020;
     }
 
-    .preview {
+    .preview, .result-box {
       margin-top: 24px;
       display: none;
     }
 
-    .preview h2 {
-      margin: 0 0 12px;
-      font-size: 22px;
-    }
-
-    .block {
+    .block, .person-card {
       border: 1px solid #eee;
       border-radius: 14px;
       padding: 14px 16px;
@@ -163,37 +196,50 @@
       margin-bottom: 6px;
     }
 
-    .footer {
-      text-align: center;
-      color: #777;
+    .person-name {
+      font-size: 24px;
+      font-weight: 900;
+      margin-bottom: 8px;
+    }
+
+    .badge {
+      display: inline-block;
+      margin-right: 6px;
+      padding: 5px 9px;
+      border-radius: 999px;
       font-size: 13px;
-      margin-top: 18px;
+      font-weight: 700;
+      background: #fff1bd;
+    }
+
+    .search-link {
+      display: inline-block;
+      margin-top: 12px;
+      color: #111;
+      background: #ffb703;
+      padding: 10px 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 800;
+    }
+
+    .sample, .footer {
+      color: #777;
+      font-size: 14px;
       line-height: 1.5;
     }
 
-    .sample {
-      margin-top: 14px;
-      font-size: 14px;
-      color: #777;
-      line-height: 1.5;
+    .footer {
+      text-align: center;
+      margin-top: 18px;
     }
 
     @media (max-width: 600px) {
-      .card {
-        padding: 24px 18px;
-      }
-
-      h1 {
-        font-size: 26px;
-      }
-
-      textarea {
-        min-height: 300px;
-      }
-
-      button {
-        width: 100%;
-      }
+      .card { padding: 24px 18px; }
+      h1 { font-size: 26px; }
+      textarea { min-height: 280px; }
+      .tabs, .filter-grid { grid-template-columns: 1fr; flex-direction: column; }
+      button { width: 100%; }
     }
   </style>
 </head>
@@ -203,49 +249,110 @@
     <div class="card">
       <h1>🎬 Shorts Maker AI</h1>
       <p class="subtitle">
-        쇼츠 대본을 붙여넣으면<br />
-        프리미어용 음성 패키지를 자동 생성합니다.
+        프리미어용 음성 패키지 생성 + 트로트 인물 랜덤 추천
       </p>
 
-      <label class="label" for="scriptInput">쇼츠 대본</label>
+      <div class="tabs">
+        <button class="tab active" onclick="showTab('audio')">🎧 Audio Pack</button>
+        <button class="tab" onclick="showTab('trot')">🎲 트로트 인물 추천</button>
+      </div>
 
-      <textarea id="scriptInput" placeholder="예시:
+      <section id="audioSection" class="section active">
+        <label class="label" for="scriptInput">쇼츠 대본</label>
+
+        <textarea id="scriptInput" placeholder="예시:
 0~2초
 송가인이 빵집 사장님 선언했습니다
 
 2~6초
-송가인이 버킷리스트였던 베이킹에 도전했는데요
+송가인이 버킷리스트였던 베이킹에 도전했는데요"></textarea>
 
-6~10초
-정다경 강예슬 김희진 두리와 함께해 특급 케미를 선보였습니다"></textarea>
+        <div class="sample">
+          형식: <b>0~2초</b> 다음 줄에 대본을 입력하면 됩니다.
+        </div>
 
-      <div class="sample">
-        형식: <b>0~2초</b> 다음 줄에 대본을 입력하면 됩니다.
-      </div>
+        <div class="buttons">
+          <button class="secondary" onclick="previewScript()">대본 확인</button>
+          <button class="primary" onclick="generatePack()">패키지 생성 & 다운로드</button>
+        </div>
 
-      <div class="buttons">
-        <button class="secondary" onclick="previewScript()">대본 확인</button>
-        <button class="primary" onclick="generatePack()">패키지 생성 & 다운로드</button>
-      </div>
+        <div id="status" class="status"></div>
 
-      <div id="status" class="status"></div>
+        <div id="preview" class="preview">
+          <h2>대본 분석 결과</h2>
+          <div id="previewList"></div>
+        </div>
+      </section>
 
-      <div id="preview" class="preview">
-        <h2>대본 분석 결과</h2>
-        <div id="previewList"></div>
-      </div>
+      <section id="trotSection" class="section">
+        <h2>🎲 트로트 인물 랜덤 추천기</h2>
+        <p class="sample">
+          오늘 다룰 트로트 인물을 랜덤으로 추천해줘요.
+        </p>
+
+        <div class="filter-grid">
+          <div>
+            <label class="label">성별</label>
+            <select id="genderFilter">
+              <option value="전체">전체</option>
+              <option value="남자">남자</option>
+              <option value="여자">여자</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="label">화제도</label>
+            <select id="levelFilter">
+              <option value="전체">전체</option>
+              <option value="HOT">HOT</option>
+              <option value="숨은인물">숨은인물</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button class="primary" onclick="pickOnePerson()">1명 추천</button>
+          <button class="secondary" onclick="pickFivePeople()">5명 추천</button>
+        </div>
+
+        <div id="trotStatus" class="status"></div>
+
+        <div id="trotResult" class="result-box">
+          <h2>추천 결과</h2>
+          <div id="personList"></div>
+        </div>
+      </section>
     </div>
 
     <div class="footer">
-      생성 파일: 1.mp3, 2.mp3, subtitles.srt, script.txt, premiere_guide.txt
+      Audio Pack: 1.mp3, 2.mp3, subtitles.srt, script.txt, premiere_guide.txt
     </div>
   </div>
 
   <script>
     const API_BASE_URL = "https://shorts-maker-api.onrender.com";
 
+    function showTab(tab) {
+      document.querySelectorAll(".tab").forEach(btn => btn.classList.remove("active"));
+      document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
+
+      if (tab === "audio") {
+        document.querySelectorAll(".tab")[0].classList.add("active");
+        document.getElementById("audioSection").classList.add("active");
+      } else {
+        document.querySelectorAll(".tab")[1].classList.add("active");
+        document.getElementById("trotSection").classList.add("active");
+      }
+    }
+
     function setStatus(message, type = "info") {
       const status = document.getElementById("status");
+      status.className = "status " + type;
+      status.textContent = message;
+    }
+
+    function setTrotStatus(message, type = "info") {
+      const status = document.getElementById("trotStatus");
       status.className = "status " + type;
       status.textContent = message;
     }
@@ -270,19 +377,14 @@
 
     async function previewScript() {
       const script = getScriptText();
-
-      if (!validateScript(script)) {
-        return;
-      }
+      if (!validateScript(script)) return;
 
       setStatus("대본을 분석하는 중...", "info");
 
       try {
         const response = await fetch(API_BASE_URL + "/parse-script", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ script }),
         });
 
@@ -294,18 +396,15 @@
 
         const preview = document.getElementById("preview");
         const previewList = document.getElementById("previewList");
-
         previewList.innerHTML = "";
 
         data.blocks.forEach((block, index) => {
           const div = document.createElement("div");
           div.className = "block";
-
           div.innerHTML = `
             <div class="time">${index + 1}. ${block.start}초 ~ ${block.end}초</div>
             <div>${escapeHtml(block.text)}</div>
           `;
-
           previewList.appendChild(div);
         });
 
@@ -318,54 +417,39 @@
 
     async function generatePack() {
       const script = getScriptText();
-
-      if (!validateScript(script)) {
-        return;
-      }
+      if (!validateScript(script)) return;
 
       const buttons = document.querySelectorAll("button");
-      buttons.forEach((button) => (button.disabled = true));
+      buttons.forEach(button => button.disabled = true);
 
-      setStatus(
-        "음성 패키지를 생성하는 중...\nElevenLabs 음성 생성 때문에 조금 걸릴 수 있어.",
-        "info"
-      );
+      setStatus("음성 패키지를 생성하는 중...\n조금 걸릴 수 있어.", "info");
 
       try {
         const response = await fetch(API_BASE_URL + "/generate-pack", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ script }),
         });
 
         if (!response.ok) {
           let message = "패키지 생성 실패";
-
           try {
             const data = await response.json();
             message = data.detail || message;
           } catch (e) {}
-
           throw new Error(message);
         }
 
         const blob = await response.blob();
-
         const disposition = response.headers.get("Content-Disposition");
         let filename = "audio_pack.zip";
 
         if (disposition && disposition.includes("filename=")) {
-          filename = disposition
-            .split("filename=")[1]
-            .replaceAll('"', "")
-            .trim();
+          filename = disposition.split("filename=")[1].replaceAll('"', "").trim();
         }
 
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
-
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
@@ -378,12 +462,90 @@
       } catch (error) {
         setStatus("오류 발생: " + error.message, "error");
       } finally {
-        buttons.forEach((button) => (button.disabled = false));
+        buttons.forEach(button => button.disabled = false);
       }
     }
 
+    function getTrotFilters() {
+      return {
+        gender: document.getElementById("genderFilter").value,
+        level: document.getElementById("levelFilter").value,
+      };
+    }
+
+    async function pickOnePerson() {
+      const { gender, level } = getTrotFilters();
+      setTrotStatus("추천 중...", "info");
+
+      try {
+        const url = `${API_BASE_URL}/random-trot-person?gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "추천 실패");
+        }
+
+        renderPeople([{
+          ...data.person,
+          naver_search_url: data.naver_search_url
+        }]);
+
+        setTrotStatus("1명 추천 완료!", "success");
+      } catch (error) {
+        setTrotStatus("오류 발생: " + error.message, "error");
+      }
+    }
+
+    async function pickFivePeople() {
+      const { gender, level } = getTrotFilters();
+      setTrotStatus("추천 중...", "info");
+
+      try {
+        const url = `${API_BASE_URL}/random-trot-people?count=5&gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "추천 실패");
+        }
+
+        renderPeople(data.people);
+        setTrotStatus(`${data.count}명 추천 완료!`, "success");
+      } catch (error) {
+        setTrotStatus("오류 발생: " + error.message, "error");
+      }
+    }
+
+    function renderPeople(people) {
+      const result = document.getElementById("trotResult");
+      const list = document.getElementById("personList");
+
+      list.innerHTML = "";
+
+      people.forEach((person) => {
+        const div = document.createElement("div");
+        div.className = "person-card";
+
+        div.innerHTML = `
+          <div class="person-name">${escapeHtml(person.name)}</div>
+          <span class="badge">${escapeHtml(person.gender)}</span>
+          <span class="badge">${escapeHtml(person.level)}</span>
+          <span class="badge">${escapeHtml(person.category)}</span>
+          <br />
+          <a class="search-link" href="${person.naver_search_url}" target="_blank">
+            네이버에서 기사/사진 찾기
+          </a>
+        `;
+
+        list.appendChild(div);
+      });
+
+      result.style.display = "block";
+    }
+
     function escapeHtml(text) {
-      return text
+      return String(text)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
         .replaceAll(">", "&gt;")
