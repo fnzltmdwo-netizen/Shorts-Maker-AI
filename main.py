@@ -48,7 +48,7 @@ class TitleRequest(BaseModel):
     article_body: str = ""
     person_name: str = ""
     tone: str = "자극적이지만 과장 없는 트로트 뉴스형"
-    count: int = 10
+    count: int = 5
 
 
 def load_trot_people():
@@ -682,7 +682,7 @@ def generate_shorts_titles(request: TitleRequest):
     article_body = request.article_body.strip()
     person_name = request.person_name.strip()
     tone = request.tone.strip()
-    count = max(1, min(request.count, 20))
+    count = max(1, min(request.count, 5))
 
     if not article_title and not article_body:
         raise HTTPException(status_code=400, detail="기사 제목이나 본문이 비어있습니다.")
