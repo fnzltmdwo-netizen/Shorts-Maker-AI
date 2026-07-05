@@ -81,16 +81,22 @@ def safe_filename(name: str) -> str:
     name = name.strip()
 
     if not name:
-        name = "shorts_project"
+        return "shorts_project"
 
-    name = re.sub(r'[\\/:*?"<>|]', "", name)
+    # 프리미어가 싫어하는 특수문자 제거
+    name = re.sub(r'[^가-힣a-zA-Z0-9 _-]', "", name)
+
+    # 공백 정리
     name = re.sub(r"\s+", " ", name)
-    name = name.strip(" .")
+    name = name.strip()
+
+    # 너무 긴 폴더명 방지
+    name = name[:30]
 
     if not name:
-        name = "shorts_project"
+        return "shorts_project"
 
-    return name[:80]
+    return name
 
 
 def zip_safe_filename(name: str) -> str:
