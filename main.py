@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -6,6 +6,7 @@ import os
 import re
 import uuid
 import zipfile
+import random
 import requests
 from pathlib import Path
 
@@ -31,11 +32,120 @@ class ScriptRequest(BaseModel):
     script: str
 
 
+TROT_PEOPLE = [
+    {"name": "임영웅", "gender": "남자", "level": "HOT", "category": "미스터트롯"},
+    {"name": "영탁", "gender": "남자", "level": "HOT", "category": "미스터트롯"},
+    {"name": "이찬원", "gender": "남자", "level": "HOT", "category": "미스터트롯"},
+    {"name": "김호중", "gender": "남자", "level": "HOT", "category": "미스터트롯"},
+    {"name": "장민호", "gender": "남자", "level": "HOT", "category": "미스터트롯"},
+    {"name": "정동원", "gender": "남자", "level": "HOT", "category": "미스터트롯"},
+    {"name": "박서진", "gender": "남자", "level": "HOT", "category": "현역가왕"},
+    {"name": "진해성", "gender": "남자", "level": "HOT", "category": "미스터트롯2"},
+    {"name": "안성훈", "gender": "남자", "level": "HOT", "category": "미스터트롯2"},
+    {"name": "박지현", "gender": "남자", "level": "HOT", "category": "미스터트롯2"},
+    {"name": "나상도", "gender": "남자", "level": "숨은인물", "category": "미스터트롯2"},
+    {"name": "최수호", "gender": "남자", "level": "숨은인물", "category": "미스터트롯2"},
+    {"name": "진욱", "gender": "남자", "level": "숨은인물", "category": "미스터트롯2"},
+    {"name": "에녹", "gender": "남자", "level": "HOT", "category": "불타는트롯맨"},
+    {"name": "손태진", "gender": "남자", "level": "HOT", "category": "불타는트롯맨"},
+    {"name": "신성", "gender": "남자", "level": "숨은인물", "category": "불타는트롯맨"},
+    {"name": "민수현", "gender": "남자", "level": "숨은인물", "category": "불타는트롯맨"},
+    {"name": "김중연", "gender": "남자", "level": "숨은인물", "category": "불타는트롯맨"},
+    {"name": "공훈", "gender": "남자", "level": "숨은인물", "category": "불타는트롯맨"},
+    {"name": "전종혁", "gender": "남자", "level": "숨은인물", "category": "불타는트롯맨"},
+
+    {"name": "송가인", "gender": "여자", "level": "HOT", "category": "미스트롯"},
+    {"name": "양지은", "gender": "여자", "level": "HOT", "category": "미스트롯2"},
+    {"name": "홍지윤", "gender": "여자", "level": "HOT", "category": "미스트롯2"},
+    {"name": "김다현", "gender": "여자", "level": "HOT", "category": "현역가왕"},
+    {"name": "전유진", "gender": "여자", "level": "HOT", "category": "현역가왕"},
+    {"name": "린", "gender": "여자", "level": "HOT", "category": "현역가왕"},
+    {"name": "마이진", "gender": "여자", "level": "HOT", "category": "현역가왕"},
+    {"name": "박혜신", "gender": "여자", "level": "HOT", "category": "현역가왕"},
+    {"name": "마리아", "gender": "여자", "level": "숨은인물", "category": "미스트롯2"},
+    {"name": "김태연", "gender": "여자", "level": "HOT", "category": "미스트롯2"},
+    {"name": "은가은", "gender": "여자", "level": "HOT", "category": "미스트롯2"},
+    {"name": "별사랑", "gender": "여자", "level": "숨은인물", "category": "미스트롯2"},
+    {"name": "강혜연", "gender": "여자", "level": "숨은인물", "category": "미스트롯2"},
+    {"name": "정다경", "gender": "여자", "level": "숨은인물", "category": "미스트롯"},
+    {"name": "숙행", "gender": "여자", "level": "숨은인물", "category": "미스트롯"},
+    {"name": "두리", "gender": "여자", "level": "숨은인물", "category": "미스트롯"},
+    {"name": "김희진", "gender": "여자", "level": "숨은인물", "category": "미스트롯"},
+    {"name": "강예슬", "gender": "여자", "level": "숨은인물", "category": "미스트롯"},
+    {"name": "요요미", "gender": "여자", "level": "HOT", "category": "여성솔로"},
+    {"name": "설하윤", "gender": "여자", "level": "HOT", "category": "여성솔로"},
+    {"name": "지원이", "gender": "여자", "level": "숨은인물", "category": "여성솔로"},
+    {"name": "오유진", "gender": "여자", "level": "HOT", "category": "미스트롯3"},
+    {"name": "정서주", "gender": "여자", "level": "HOT", "category": "미스트롯3"},
+    {"name": "배아현", "gender": "여자", "level": "HOT", "category": "미스트롯3"},
+    {"name": "미스김", "gender": "여자", "level": "숨은인물", "category": "미스트롯3"},
+    {"name": "나영", "gender": "여자", "level": "숨은인물", "category": "미스트롯3"},
+    {"name": "김소연", "gender": "여자", "level": "숨은인물", "category": "미스트롯3"},
+    {"name": "염유리", "gender": "여자", "level": "숨은인물", "category": "미스트롯3"},
+]
+
+
 @app.get("/")
 def root():
     return {
-        "message": "Shorts Maker AI v2 - Audio Pack",
+        "message": "Shorts Maker AI v2",
         "status": "running",
+        "trot_people_count": len(TROT_PEOPLE),
+    }
+
+
+def filter_people(gender: str = "전체", level: str = "전체"):
+    people = TROT_PEOPLE
+
+    if gender != "전체":
+        people = [p for p in people if p["gender"] == gender]
+
+    if level != "전체":
+        people = [p for p in people if p["level"] == level]
+
+    return people
+
+
+@app.get("/random-trot-person")
+def random_trot_person(
+    gender: str = Query("전체"),
+    level: str = Query("전체"),
+):
+    people = filter_people(gender, level)
+
+    if not people:
+        raise HTTPException(status_code=404, detail="조건에 맞는 인물이 없습니다.")
+
+    person = random.choice(people)
+
+    return {
+        "person": person,
+        "naver_search_url": f"https://search.naver.com/search.naver?query={person['name']} 트로트",
+    }
+
+
+@app.get("/random-trot-people")
+def random_trot_people(
+    count: int = Query(5, ge=1, le=20),
+    gender: str = Query("전체"),
+    level: str = Query("전체"),
+):
+    people = filter_people(gender, level)
+
+    if not people:
+        raise HTTPException(status_code=404, detail="조건에 맞는 인물이 없습니다.")
+
+    picked = random.sample(people, min(count, len(people)))
+
+    return {
+        "count": len(picked),
+        "people": [
+            {
+                **person,
+                "naver_search_url": f"https://search.naver.com/search.naver?query={person['name']} 트로트",
+            }
+            for person in picked
+        ],
     }
 
 
