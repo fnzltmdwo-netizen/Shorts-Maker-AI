@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>Shorts Maker AI</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
     * { box-sizing: border-box; }
@@ -19,7 +20,7 @@
 
     .container {
       width: 100%;
-      max-width: 900px;
+      max-width: 1000px;
       margin: 0 auto;
       padding: 40px 20px;
     }
@@ -28,21 +29,16 @@
       background: #fff;
       border-radius: 24px;
       padding: 32px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
     }
 
-    h1 {
-      margin: 0 0 10px;
-      font-size: 32px;
-      text-align: center;
-    }
-
+    h1 { text-align: center; margin: 0 0 10px; }
     h2 { margin-top: 0; }
 
     .subtitle {
-      margin: 0 0 24px;
       text-align: center;
       color: #666;
+      margin-bottom: 24px;
       line-height: 1.6;
     }
 
@@ -75,56 +71,29 @@
     .field { margin-bottom: 18px; }
 
     .label {
-      font-weight: 700;
-      margin-bottom: 10px;
       display: block;
+      font-weight: 800;
+      margin-bottom: 10px;
     }
 
-    input,
-    textarea,
-    select {
+    input, textarea, select {
       width: 100%;
       border: 2px solid #eee;
       border-radius: 16px;
       padding: 16px;
       font-size: 16px;
-      outline: none;
       font-family: inherit;
-      background: white;
-    }
-
-    input:focus,
-    textarea:focus,
-    select:focus {
-      border-color: #ffb703;
+      outline: none;
     }
 
     textarea {
-      min-height: 320px;
+      min-height: 300px;
       resize: vertical;
       line-height: 1.6;
     }
 
-    input[type="file"] {
-      padding: 14px;
-      cursor: pointer;
-    }
-
-    .paste-box {
-      margin-top: 10px;
-      border: 2px dashed #ffb703;
-      border-radius: 16px;
-      padding: 18px;
-      text-align: center;
-      background: #fffaf0;
-      color: #555;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .paste-box.active {
-      background: #fff1bd;
-      border-color: #ff8a00;
+    input:focus, textarea:focus, select:focus {
+      border-color: #ffb703;
     }
 
     .buttons {
@@ -141,85 +110,54 @@
       border-radius: 14px;
       padding: 16px 20px;
       font-size: 17px;
-      font-weight: 700;
+      font-weight: 800;
       cursor: pointer;
-      transition: 0.15s;
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
     }
 
     .primary { background: #ffb703; color: #111; }
     .secondary { background: #f1f1f1; color: #333; }
     .danger { background: #ffecec; color: #b00020; }
 
-    .primary:hover:not(:disabled),
-    .secondary:hover:not(:disabled),
-    .danger:hover:not(:disabled) {
-      transform: translateY(-1px);
-    }
-
     .status {
+      display: none;
       margin-top: 18px;
       padding: 14px 16px;
       border-radius: 14px;
-      display: none;
-      line-height: 1.5;
       white-space: pre-line;
+      line-height: 1.5;
     }
 
-    .status.info {
-      display: block;
-      background: #eef6ff;
-      color: #23527c;
+    .status.info { display: block; background: #eef6ff; color: #23527c; }
+    .status.success { display: block; background: #eaf8ef; color: #1f7a3f; }
+    .status.error { display: block; background: #ffecec; color: #b00020; }
+
+    .paste-box {
+      margin-top: 10px;
+      border: 2px dashed #ffb703;
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      background: #fffaf0;
+      font-weight: 800;
+      cursor: pointer;
     }
 
-    .status.success {
-      display: block;
-      background: #eaf8ef;
-      color: #1f7a3f;
-    }
-
-    .status.error {
-      display: block;
-      background: #ffecec;
-      color: #b00020;
-    }
-
-    .preview,
-    .result-box {
-      margin-top: 24px;
-      display: none;
-    }
-
-    .block,
-    .person-card {
-      border: 1px solid #eee;
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 12px;
-      background: #fafafa;
-    }
-
-    .time {
-      font-weight: 700;
-      color: #ff8a00;
-      margin-bottom: 6px;
+    .sample {
+      color: #777;
+      font-size: 14px;
+      line-height: 1.5;
     }
 
     .file-list {
+      display: none;
       margin-top: 10px;
       padding: 12px;
       border-radius: 12px;
       background: #fafafa;
       border: 1px solid #eee;
-      color: #555;
-      font-size: 14px;
-      line-height: 1.6;
-      display: none;
       white-space: pre-line;
+      font-size: 14px;
+      color: #555;
     }
 
     .thumb-grid {
@@ -231,18 +169,16 @@
 
     .thumb {
       position: relative;
+      height: 110px;
       border-radius: 12px;
       overflow: hidden;
       border: 1px solid #eee;
-      background: #fafafa;
-      height: 110px;
     }
 
     .thumb img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      display: block;
     }
 
     .thumb button {
@@ -254,9 +190,28 @@
       height: 26px;
       padding: 0;
       border-radius: 50%;
-      background: rgba(0, 0, 0, 0.65);
+      background: rgba(0,0,0,0.65);
       color: white;
       font-size: 14px;
+    }
+
+    .preview, .result-box {
+      display: none;
+      margin-top: 24px;
+    }
+
+    .block, .person-card {
+      border: 1px solid #eee;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+      background: #fafafa;
+    }
+
+    .time {
+      font-weight: 800;
+      color: #ff8a00;
+      margin-bottom: 6px;
     }
 
     .filter-grid {
@@ -278,9 +233,9 @@
       margin-bottom: 6px;
       padding: 5px 9px;
       border-radius: 999px;
-      font-size: 13px;
-      font-weight: 700;
       background: #fff1bd;
+      font-size: 13px;
+      font-weight: 800;
     }
 
     .link-row {
@@ -302,51 +257,156 @@
 
     .image-link { background: #ffe08a; }
 
-    .sample,
-    .footer {
-      color: #777;
-      font-size: 14px;
-      line-height: 1.5;
+    .thumbnail-area {
+      margin-top: 24px;
+      display: flex;
+      justify-content: center;
+      overflow-x: auto;
+      padding-bottom: 10px;
+    }
+
+    .flash-thumb {
+      position: relative;
+      width: 1280px;
+      height: 720px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      background: #111;
+      border-radius: 18px;
+      transform-origin: top center;
+      transform: scale(0.65);
+      margin-bottom: -250px;
+    }
+
+    .flash-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      filter: saturate(1.3) contrast(1.08);
+    }
+
+    .flash-bg::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(255,0,200,0.45), transparent 35%),
+        radial-gradient(circle at 85% 15%, rgba(255,230,0,0.32), transparent 30%),
+        linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(0,0,0,0.55));
+    }
+
+    .flash-label {
+      position: absolute;
+      left: 28px;
+      top: 20px;
+      padding: 8px 20px;
+      background: linear-gradient(135deg, #ff007a, #ffcf00);
+      color: white;
+      font-size: 34px;
+      font-weight: 1000;
+      border-radius: 999px;
+      -webkit-text-stroke: 1px #5b004f;
+      text-shadow: 0 3px 0 #5b004f, 0 0 14px #fff;
+      transform: rotate(-4deg);
+    }
+
+    .flash-logo {
+      position: absolute;
+      right: 24px;
+      top: 22px;
+      width: 118px;
+      height: 118px;
+      border-radius: 50%;
+      background: white;
+      border: 7px solid #ff3030;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #e60000;
+      font-size: 34px;
+      font-weight: 1000;
+      text-align: center;
+      line-height: 0.9;
+      box-shadow: 0 0 0 4px #fff, 0 6px 18px rgba(0,0,0,0.35);
+    }
+
+    .flash-main {
+      position: absolute;
+      left: 38px;
+      bottom: 95px;
+      width: 860px;
+      font-size: 76px;
+      font-weight: 1000;
+      line-height: 1.08;
+      color: white;
+      -webkit-text-stroke: 6px #111;
+      text-shadow:
+        0 6px 0 #111,
+        0 0 18px #ff00d4,
+        0 0 26px #00d8ff;
+      letter-spacing: -4px;
+    }
+
+    .flash-sub {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 88px;
+      font-weight: 1000;
+      line-height: 1.05;
+      background: linear-gradient(180deg, #ffffff 0%, #ff63f7 35%, #00d8ff 100%);
+      -webkit-background-clip: text;
+      color: transparent;
+      -webkit-text-stroke: 5px #111;
+      text-shadow:
+        0 5px 0 #111,
+        0 0 16px #ff00d4,
+        0 0 26px #00d8ff;
+    }
+
+    .flash-time {
+      position: absolute;
+      right: 42px;
+      bottom: 108px;
+      font-size: 112px;
+      font-weight: 1000;
+      color: #fff200;
+      -webkit-text-stroke: 7px #6b0000;
+      text-shadow:
+        0 6px 0 #111,
+        0 0 18px #ff6a00,
+        0 0 30px #fff200;
+      transform: rotate(-5deg);
+    }
+
+    .flash-border {
+      position: absolute;
+      inset: 0;
+      border: 10px solid #ff62d8;
+      box-shadow: inset 0 0 0 6px #fff, inset 0 0 22px #ff00d4;
+      pointer-events: none;
     }
 
     .footer {
       text-align: center;
+      color: #777;
+      font-size: 14px;
       margin-top: 18px;
     }
 
-    .thumbnail-preview {
-      margin-top: 20px;
-      display: none;
-      text-align: center;
-    }
-
-    .thumbnail-preview img {
-      width: 100%;
-      max-width: 420px;
-      border-radius: 16px;
-      border: 1px solid #eee;
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-    }
-
-    .template-help {
-      margin-top: 8px;
-      padding: 12px;
-      border-radius: 12px;
-      background: #fffaf0;
-      color: #666;
-      font-size: 14px;
-      line-height: 1.5;
+    @media (max-width: 800px) {
+      .flash-thumb {
+        transform: scale(0.42);
+        margin-bottom: -400px;
+      }
     }
 
     @media (max-width: 600px) {
       .container { padding: 24px 12px; }
       .card { padding: 24px 18px; }
-      h1 { font-size: 26px; }
-      textarea { min-height: 260px; }
       .tabs { flex-direction: column; }
       .filter-grid { grid-template-columns: 1fr; }
       button { width: 100%; }
-      .search-link { width: 100%; text-align: center; }
     }
   </style>
 </head>
@@ -355,33 +415,24 @@
   <div class="container">
     <div class="card">
       <h1>🎬 Shorts Maker AI</h1>
-
-      <p class="subtitle">
-        음성 패키지 + 트로트 인물 추천 + 썸네일 생성
-      </p>
+      <p class="subtitle">음성 패키지 + 트로트 인물 추천 + 삐까뻔쩍 썸네일 생성</p>
 
       <div class="tabs">
         <button class="tab active" onclick="showTab('audio')">🎧 Audio Pack</button>
         <button class="tab" onclick="showTab('trot')">🎲 트로트 인물 추천</button>
-        <button class="tab" onclick="showTab('thumbnail')">🖼 썸네일 생성</button>
+        <button class="tab" onclick="showTab('thumbnail')">✨ 썸네일 생성</button>
       </div>
 
       <section id="audioSection" class="section active">
         <div class="field">
-          <label class="label" for="titleInput">영상 제목 / 폴더명</label>
-          <input
-            id="titleInput"
-            type="text"
-            placeholder="예: 영상75 EXID 출신 강혜연 반전 근황"
-          />
+          <label class="label">영상 제목 / 폴더명</label>
+          <input id="titleInput" type="text" placeholder="예: 영상75 EXID 출신 강혜연 반전 근황" />
         </div>
 
         <div class="field">
-          <label class="label" for="scriptInput">쇼츠 대본</label>
+          <label class="label">쇼츠 대본</label>
           <textarea id="scriptInput" placeholder="예시:
-🎬 숏츠 대본
-
-0~2초 (훅)
+0~2초
 강혜연의 반전 근황이 공개됐습니다
 
 2~6초
@@ -389,15 +440,8 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
         </div>
 
         <div class="field">
-          <label class="label" for="imageInput">이미지 업로드</label>
-
-          <input
-            id="imageInput"
-            type="file"
-            accept="image/*"
-            multiple
-            onchange="addSelectedFilesFromInput()"
-          />
+          <label class="label">이미지 업로드</label>
+          <input id="imageInput" type="file" accept="image/*" multiple onchange="addSelectedFilesFromInput()" />
 
           <div id="pasteBox" class="paste-box" tabindex="0" onclick="focusPasteBox()">
             📸 여기를 클릭한 뒤 Ctrl+V로 캡처 이미지 붙여넣기<br />
@@ -427,10 +471,6 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
 
       <section id="trotSection" class="section">
         <h2>🎲 트로트 인물 랜덤 추천기</h2>
-
-        <p class="sample">
-          오늘 다룰 트로트 인물을 랜덤으로 추천합니다.
-        </p>
 
         <div class="filter-grid">
           <div>
@@ -466,72 +506,62 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
       </section>
 
       <section id="thumbnailSection" class="section">
-        <h2>🖼 썸네일 생성기</h2>
-
-        <p class="sample">
-          사진 1장과 문구를 넣으면 쇼츠용 큰글씨 썸네일을 생성합니다.
-        </p>
+        <h2>✨ 삐까뻔쩍 썸네일 생성기</h2>
 
         <div class="field">
-          <label class="label" for="thumbnailTitleInput">썸네일 파일 제목</label>
-          <input
-            id="thumbnailTitleInput"
-            type="text"
-            placeholder="예: 강혜연 반전 근황"
-          />
+          <label class="label">썸네일 사진</label>
+          <input id="flashImageInput" type="file" accept="image/*" onchange="loadFlashImage()" />
         </div>
 
         <div class="field">
-          <label class="label" for="thumbnailTextInput">큰 글씨 문구</label>
-          <input
-            id="thumbnailTextInput"
-            type="text"
-            placeholder="예: 팬들의 원성을 사다"
-          />
+          <label class="label">상단 작은 라벨</label>
+          <input id="flashLabelInput" type="text" value="새 동영상" oninput="updateFlashThumbnail()" />
         </div>
 
         <div class="field">
-          <label class="label" for="thumbnailTemplateSelect">썸네일 템플릿</label>
-          <select id="thumbnailTemplateSelect" onchange="updateTemplateHelp()">
-            <option value="center">중앙 큰글씨 - 노란 글씨 + 검은 박스</option>
-            <option value="top">상단 예능형 - 위쪽 흰 글씨</option>
-            <option value="bottom">하단 뉴스형 - 아래쪽 노란 글씨</option>
-          </select>
-
-          <div id="templateHelp" class="template-help">
-            중앙에 큰 노란 글씨가 들어갑니다. 충격/논란/반전 문구에 좋아요.
-          </div>
+          <label class="label">흰색 메인 문구</label>
+          <input id="flashMainInput" type="text" value="인형 미모의 노래 모음" oninput="updateFlashThumbnail()" />
         </div>
 
         <div class="field">
-          <label class="label" for="thumbnailImageInput">썸네일 사진 1장</label>
-          <input id="thumbnailImageInput" type="file" accept="image/*" />
-          <div class="sample">
-            현재 버전은 파일 선택 방식입니다.
-          </div>
+          <label class="label">그라데이션 강조 문구</label>
+          <input id="flashSubInput" type="text" value="트롯 바비 홍지윤" oninput="updateFlashThumbnail()" />
+        </div>
+
+        <div class="field">
+          <label class="label">오른쪽 강조 문구</label>
+          <input id="flashTimeInput" type="text" value="100분" oninput="updateFlashThumbnail()" />
         </div>
 
         <div class="buttons">
-          <button class="primary" onclick="generateThumbnail()">썸네일 생성 & 다운로드</button>
+          <button class="primary" onclick="downloadFlashThumbnail()">썸네일 JPG 다운로드</button>
         </div>
 
         <div id="thumbnailStatus" class="status"></div>
 
-        <div id="thumbnailPreview" class="thumbnail-preview">
-          <h2>생성 미리보기</h2>
-          <img id="thumbnailPreviewImg" src="" alt="thumbnail preview" />
+        <div class="thumbnail-area">
+          <div id="flashThumb" class="flash-thumb">
+            <div id="flashBg" class="flash-bg"></div>
+            <div id="flashLabel" class="flash-label">새 동영상</div>
+            <div class="flash-logo">JOY</div>
+            <div class="flash-main">
+              <div id="flashMain">인형 미모의 노래 모음</div>
+              <div id="flashSub" class="flash-sub">트롯 바비 홍지윤</div>
+            </div>
+            <div id="flashTime" class="flash-time">100분</div>
+            <div class="flash-border"></div>
+          </div>
         </div>
       </section>
     </div>
 
-    <div class="footer">
-      Shorts Maker AI v2
-    </div>
+    <div class="footer">Shorts Maker AI v2</div>
   </div>
 
   <script>
     const API_BASE_URL = "https://shorts-maker-api.onrender.com";
     let selectedImages = [];
+    let flashImageLoaded = false;
 
     function showTab(tab) {
       document.querySelectorAll(".tab").forEach((btn) => btn.classList.remove("active"));
@@ -567,35 +597,14 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
       status.textContent = message;
     }
 
-    function updateTemplateHelp() {
-      const template = document.getElementById("thumbnailTemplateSelect").value;
-      const help = document.getElementById("templateHelp");
-
-      if (template === "top") {
-        help.textContent = "상단에 흰색 큰 글씨가 들어갑니다. 예능형/떡밥형 문구에 좋아요.";
-      } else if (template === "bottom") {
-        help.textContent = "하단에 노란 큰 글씨가 들어갑니다. 뉴스형/정보형 썸네일에 좋아요.";
-      } else {
-        help.textContent = "중앙에 큰 노란 글씨가 들어갑니다. 충격/논란/반전 문구에 좋아요.";
-      }
-    }
-
-    function getTitleText() {
-      return document.getElementById("titleInput").value.trim();
-    }
-
-    function getScriptText() {
-      return document.getElementById("scriptInput").value.trim();
-    }
-
     function validateScript(script) {
       if (!script) {
         setStatus("대본을 입력해줘!", "error");
         return false;
       }
 
-      if (!script.match(/\d+(\.\d+)?\s*[~\-]\s*\d+(\.\d+)?\s*초/)) {
-        setStatus("시간 형식이 필요해!\n예: 0~2초", "error");
+      if (!script.match(/\d+(\.\d+)?\s*[~\\-]\s*\d+(\.\d+)?\s*초/)) {
+        setStatus("시간 형식이 필요해!\\n예: 0~2초", "error");
         return false;
       }
 
@@ -603,44 +612,27 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
     }
 
     function focusPasteBox() {
-      const pasteBox = document.getElementById("pasteBox");
-      pasteBox.focus();
-      pasteBox.classList.add("active");
+      document.getElementById("pasteBox").focus();
       setStatus("이제 Ctrl+V로 캡처 이미지를 붙여넣으면 돼!", "info");
     }
-
-    document.addEventListener("click", (event) => {
-      const pasteBox = document.getElementById("pasteBox");
-      if (pasteBox && !pasteBox.contains(event.target)) {
-        pasteBox.classList.remove("active");
-      }
-    });
 
     document.addEventListener("paste", (event) => {
       const audioSection = document.getElementById("audioSection");
 
-      if (!audioSection.classList.contains("active")) {
-        return;
-      }
+      if (!audioSection.classList.contains("active")) return;
 
       const items = event.clipboardData && event.clipboardData.items;
-
-      if (!items) {
-        return;
-      }
+      if (!items) return;
 
       let added = 0;
 
       for (const item of items) {
         if (item.type && item.type.startsWith("image/")) {
           const blob = item.getAsFile();
-
           if (blob) {
             const ext = item.type.includes("png") ? "png" : "jpg";
             const filename = `clipboard_${Date.now()}_${selectedImages.length + 1}.${ext}`;
-            const file = new File([blob], filename, { type: blob.type });
-
-            selectedImages.push(file);
+            selectedImages.push(new File([blob], filename, { type: blob.type }));
             added += 1;
           }
         }
@@ -658,9 +650,7 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
       const files = Array.from(input.files || []);
 
       files.forEach((file) => {
-        if (file.type.startsWith("image/")) {
-          selectedImages.push(file);
-        }
+        if (file.type.startsWith("image/")) selectedImages.push(file);
       });
 
       input.value = "";
@@ -690,12 +680,10 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
         return;
       }
 
-      const names = selectedImages.map((file, index) => {
-        return `이미지${String(index + 1).padStart(2, "0")} → ${file.name}`;
-      });
-
       fileList.style.display = "block";
-      fileList.textContent = `선택된 이미지 ${selectedImages.length}개\n` + names.join("\n");
+      fileList.textContent =
+        `선택된 이미지 ${selectedImages.length}개\\n` +
+        selectedImages.map((file, i) => `이미지${String(i + 1).padStart(2, "0")} → ${file.name}`).join("\\n");
 
       thumbGrid.style.display = "grid";
       thumbGrid.innerHTML = "";
@@ -704,44 +692,16 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
         const url = URL.createObjectURL(file);
         const div = document.createElement("div");
         div.className = "thumb";
-
-        div.innerHTML = `
-          <img src="${url}" alt="preview" />
-          <button onclick="removeImage(${index})">×</button>
-        `;
-
+        div.innerHTML = `<img src="${url}" /><button onclick="removeImage(${index})">×</button>`;
         thumbGrid.appendChild(div);
       });
     }
 
-    function getJsonPayload() {
-      const title = getTitleText() || "shorts_project";
-      const script = getScriptText();
-
-      return { title, script };
-    }
-
-    function getFormDataPayload() {
-      const title = getTitleText() || "shorts_project";
-      const script = getScriptText();
-
-      const formData = new FormData();
-      formData.append("title", title);
-      formData.append("script", script);
-
-      selectedImages.forEach((file) => {
-        formData.append("images", file);
-      });
-
-      return formData;
-    }
-
     async function previewScript() {
-      const payload = getJsonPayload();
+      const title = document.getElementById("titleInput").value.trim() || "shorts_project";
+      const script = document.getElementById("scriptInput").value.trim();
 
-      if (!validateScript(payload.script)) {
-        return;
-      }
+      if (!validateScript(script)) return;
 
       setStatus("대본을 분석하는 중...", "info");
 
@@ -749,37 +709,23 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
         const response = await fetch(API_BASE_URL + "/parse-script", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ title, script }),
         });
 
         const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.detail || "대본 분석 실패");
-        }
+        if (!response.ok) throw new Error(data.detail || "대본 분석 실패");
 
         const preview = document.getElementById("preview");
         const previewList = document.getElementById("previewList");
-
         previewList.innerHTML = "";
-
-        const titleBlock = document.createElement("div");
-        titleBlock.className = "block";
-        titleBlock.innerHTML = `
-          <div class="time">폴더명</div>
-          <div>${escapeHtml(data.title || payload.title)}</div>
-        `;
-        previewList.appendChild(titleBlock);
 
         data.blocks.forEach((block, index) => {
           const div = document.createElement("div");
           div.className = "block";
-
           div.innerHTML = `
             <div class="time">${index + 1}. ${block.start}초 ~ ${block.end}초</div>
             <div>${escapeHtml(block.text)}</div>
           `;
-
           previewList.appendChild(div);
         });
 
@@ -791,19 +737,21 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
     }
 
     async function generatePack() {
-      const script = getScriptText();
+      const title = document.getElementById("titleInput").value.trim() || "shorts_project";
+      const script = document.getElementById("scriptInput").value.trim();
 
-      if (!validateScript(script)) {
-        return;
-      }
+      if (!validateScript(script)) return;
 
-      const buttons = document.querySelectorAll("button");
-      buttons.forEach((button) => (button.disabled = true));
-
-      setStatus("음성 + 이미지 패키지를 생성하는 중...\n조금 걸릴 수 있어.", "info");
+      setStatus("음성 + 이미지 패키지를 생성하는 중...", "info");
 
       try {
-        const formData = getFormDataPayload();
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("script", script);
+
+        selectedImages.forEach((file) => {
+          formData.append("images", file);
+        });
 
         const response = await fetch(API_BASE_URL + "/generate-pack", {
           method: "POST",
@@ -812,57 +760,33 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
 
         if (!response.ok) {
           let message = "패키지 생성 실패";
-
           try {
             const data = await response.json();
             message = data.detail || message;
           } catch (e) {}
-
           throw new Error(message);
         }
 
         const blob = await response.blob();
-        const disposition = response.headers.get("Content-Disposition");
-
-        let filename = "shorts_pack.zip";
-
-        if (disposition && disposition.includes("filename=")) {
-          filename = disposition
-            .split("filename=")[1]
-            .replaceAll('"', "")
-            .trim();
-        }
-
-        downloadBlob(blob, filename);
+        downloadBlob(blob, "shorts_pack.zip");
         setStatus("완료! zip 다운로드가 시작됐어 🎉", "success");
       } catch (error) {
         setStatus("오류 발생: " + error.message, "error");
-      } finally {
-        buttons.forEach((button) => (button.disabled = false));
       }
     }
 
-    function getTrotFilters() {
-      return {
-        gender: document.getElementById("genderFilter").value,
-        level: document.getElementById("levelFilter").value,
-      };
-    }
-
     async function pickOnePerson() {
-      const { gender, level } = getTrotFilters();
+      const gender = document.getElementById("genderFilter").value;
+      const level = document.getElementById("levelFilter").value;
+
       setTrotStatus("추천 중...", "info");
 
       try {
-        const url =
-          `${API_BASE_URL}/random-trot-person?gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
-
+        const url = `${API_BASE_URL}/random-trot-person?gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
         const response = await fetch(url);
         const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.detail || "추천 실패");
-        }
+        if (!response.ok) throw new Error(data.detail || "추천 실패");
 
         renderPeople([data.person]);
         setTrotStatus("1명 추천 완료!", "success");
@@ -872,19 +796,17 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
     }
 
     async function pickFivePeople() {
-      const { gender, level } = getTrotFilters();
+      const gender = document.getElementById("genderFilter").value;
+      const level = document.getElementById("levelFilter").value;
+
       setTrotStatus("추천 중...", "info");
 
       try {
-        const url =
-          `${API_BASE_URL}/random-trot-people?count=5&gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
-
+        const url = `${API_BASE_URL}/random-trot-people?count=5&gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
         const response = await fetch(url);
         const data = await response.json();
 
-        if (!response.ok) {
-          throw new Error(data.detail || "추천 실패");
-        }
+        if (!response.ok) throw new Error(data.detail || "추천 실패");
 
         renderPeople(data.people);
         setTrotStatus(`${data.count}명 추천 완료!`, "success");
@@ -896,124 +818,86 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
     function renderPeople(people) {
       const result = document.getElementById("trotResult");
       const list = document.getElementById("personList");
-
       list.innerHTML = "";
 
       people.forEach((person) => {
-        const newsUrl =
-          person.google_news_url ||
-          person.google_search_url ||
-          person.naver_search_url ||
-          "#";
-
-        const imageUrl =
-          person.google_image_url ||
-          person.google_search_url ||
-          person.naver_search_url ||
-          "#";
-
         const div = document.createElement("div");
         div.className = "person-card";
-
         div.innerHTML = `
           <div class="person-name">${escapeHtml(person.name)}</div>
           <span class="badge">${escapeHtml(person.gender)}</span>
           <span class="badge">${escapeHtml(person.level)}</span>
           <span class="badge">${escapeHtml(person.category)}</span>
-
           <div class="link-row">
-            <a class="search-link" href="${newsUrl}" target="_blank">
-              📰 최신 기사 보기
-            </a>
-            <a class="search-link image-link" href="${imageUrl}" target="_blank">
-              🖼 사진 찾기
-            </a>
+            <a class="search-link" href="${person.google_news_url}" target="_blank">📰 최신 기사 보기</a>
+            <a class="search-link image-link" href="${person.google_image_url}" target="_blank">🖼 사진 찾기</a>
           </div>
         `;
-
         list.appendChild(div);
       });
 
       result.style.display = "block";
     }
 
-    async function generateThumbnail() {
-      const title = document.getElementById("thumbnailTitleInput").value.trim() || "thumbnail";
-      const thumbnailText = document.getElementById("thumbnailTextInput").value.trim();
-      const template = document.getElementById("thumbnailTemplateSelect").value;
-      const imageInput = document.getElementById("thumbnailImageInput");
-      const imageFile = imageInput.files[0];
+    function loadFlashImage() {
+      const input = document.getElementById("flashImageInput");
+      const file = input.files[0];
 
-      if (!thumbnailText) {
-        setThumbnailStatus("썸네일 문구를 입력해줘!", "error");
+      if (!file) return;
+
+      const url = URL.createObjectURL(file);
+      document.getElementById("flashBg").style.backgroundImage = `url('${url}')`;
+      flashImageLoaded = true;
+      setThumbnailStatus("이미지 적용 완료!", "success");
+    }
+
+    function updateFlashThumbnail() {
+      document.getElementById("flashLabel").textContent =
+        document.getElementById("flashLabelInput").value || "새 동영상";
+
+      document.getElementById("flashMain").textContent =
+        document.getElementById("flashMainInput").value || "인형 미모의 노래 모음";
+
+      document.getElementById("flashSub").textContent =
+        document.getElementById("flashSubInput").value || "트롯 바비 홍지윤";
+
+      document.getElementById("flashTime").textContent =
+        document.getElementById("flashTimeInput").value || "100분";
+    }
+
+    async function downloadFlashThumbnail() {
+      updateFlashThumbnail();
+
+      if (!flashImageLoaded) {
+        setThumbnailStatus("먼저 썸네일 사진을 선택해줘!", "error");
         return;
       }
 
-      if (!imageFile) {
-        setThumbnailStatus("썸네일 사진을 1장 선택해줘!", "error");
-        return;
-      }
+      setThumbnailStatus("썸네일 이미지 생성 중...", "info");
 
-      setThumbnailStatus("썸네일 생성 중...", "info");
+      const target = document.getElementById("flashThumb");
 
-      try {
-        const formData = new FormData();
-        formData.append("title", title);
-        formData.append("thumbnail_text", thumbnailText);
-        formData.append("template", template);
-        formData.append("image", imageFile);
+      const canvas = await html2canvas(target, {
+        scale: 1,
+        useCORS: true,
+        backgroundColor: null,
+        width: 1280,
+        height: 720,
+      });
 
-        const response = await fetch(API_BASE_URL + "/generate-thumbnail", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!response.ok) {
-          let message = "썸네일 생성 실패";
-
-          try {
-            const data = await response.json();
-            message = data.detail || message;
-          } catch (e) {}
-
-          throw new Error(message);
-        }
-
-        const blob = await response.blob();
-        const previewUrl = URL.createObjectURL(blob);
-
-        const preview = document.getElementById("thumbnailPreview");
-        const previewImg = document.getElementById("thumbnailPreviewImg");
-
-        previewImg.src = previewUrl;
-        preview.style.display = "block";
-
-        const disposition = response.headers.get("Content-Disposition");
-        let filename = "thumbnail.jpg";
-
-        if (disposition && disposition.includes("filename=")) {
-          filename = disposition
-            .split("filename=")[1]
-            .replaceAll('"', "")
-            .trim();
-        }
-
-        downloadBlob(blob, filename);
-        setThumbnailStatus("완료! 썸네일 다운로드가 시작됐어 🎉", "success");
-      } catch (error) {
-        setThumbnailStatus("오류 발생: " + error.message, "error");
-      }
+      canvas.toBlob((blob) => {
+        downloadBlob(blob, "flash_thumbnail.jpg");
+        setThumbnailStatus("완료! JPG 다운로드가 시작됐어 🎉", "success");
+      }, "image/jpeg", 0.95);
     }
 
     function downloadBlob(blob, filename) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
-
       a.href = url;
       a.download = filename;
       document.body.appendChild(a);
       a.click();
-
       a.remove();
       window.URL.revokeObjectURL(url);
     }
