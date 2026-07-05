@@ -339,7 +339,7 @@ async def generate_pack(
     create_original_script_txt(script, project_dir / "대본.txt")
 
     for index, block in enumerate(blocks, start=1):
-        mp3_path = project_dir / f"audio_{index:02d}.mp3"
+        mp3_path = project_dir / f"{index}.mp3"
         generate_elevenlabs_mp3(block["text"], mp3_path)
 
     for index, image in enumerate(images, start=1):
@@ -693,7 +693,7 @@ def generate_shorts_titles(request: TitleRequest):
     prompt = f"""
 너는 한국 유튜브 쇼츠 트로트/연예 채널 제목 전문가다.
 
-아래 기사 정보를 바탕으로 유튜브 쇼츠 제목 {count}개, 썸네일 문구 {count}개, 태그 10개를 만들어라.
+아래 기사 정보를 바탕으로 유튜브 쇼츠 제목 {count}개, 썸네일 문구 {count}개, 유튜브 설명 {count}개, 태그 10개를 만들어라.
 
 조건:
 - 제목은 15~35자 정도
@@ -701,6 +701,8 @@ def generate_shorts_titles(request: TitleRequest):
 - 기사 내용 안에서만 작성
 - 분위기: {tone}
 - 인물명: {person_name if person_name else "기사에서 추론"}
+- 설명은 2~3줄로 짧게 작성
+- 설명 마지막 줄에는 관련 해시태그를 자연스럽게 포함
 - JSON 형식으로만 출력
 - 코드블록 금지
 
@@ -733,6 +735,7 @@ def generate_shorts_titles(request: TitleRequest):
         return {
             "titles": data.get("titles", []),
             "thumbnail_texts": data.get("thumbnail_texts", []),
+            "descriptions": data.get("descriptions", []),
             "tags": data.get("tags", []),
         }
 
