@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shorts Maker AI</title>
 
-  <script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=160339"></script><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=160896"></script><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
     * { box-sizing: border-box; }
@@ -472,6 +472,48 @@
         margin-bottom: -1580px;
       }
     }
+
+
+    .title-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .generated-list {
+      margin-top: 18px;
+      display: none;
+    }
+
+    .generated-item {
+      border: 1px solid #eee;
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 10px;
+      background: #fafafa;
+      line-height: 1.5;
+    }
+
+    .generated-item-title {
+      font-weight: 900;
+      font-size: 17px;
+      margin-bottom: 6px;
+    }
+
+    .generated-item-copy {
+      margin-top: 8px;
+      min-width: auto;
+      width: auto;
+      padding: 8px 12px;
+      font-size: 13px;
+      border-radius: 10px;
+      background: #ffb703;
+    }
+
+    @media (max-width: 600px) {
+      .title-grid { grid-template-columns: 1fr; }
+    }
+
   </style>
 </head>
 
@@ -479,12 +521,13 @@
   <div class="container">
     <div class="card">
       <h1>🎬 Shorts Maker AI</h1>
-      <p class="subtitle">음성 패키지 + 트로트 인물 추천 + 쇼츠용 세로 썸네일 생성</p>
+      <p class="subtitle">음성 패키지 + 트로트 인물 추천 + 쇼츠 썸네일 + AI 제목 생성</p>
 
       <div class="tabs">
         <button class="tab active" onclick="showTab('audio')">🎧 Audio Pack</button>
         <button class="tab" onclick="showTab('trot')">🎲 트로트 인물 추천</button>
         <button class="tab" onclick="showTab('thumbnail')">✨ 쇼츠 썸네일</button>
+        <button class="tab" onclick="showTab('titles')">📝 AI 제목 생성</button>
       </div>
 
       <section id="audioSection" class="section active">
@@ -628,6 +671,50 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
           </div>
         </div>
       </section>
+
+      <section id="titlesSection" class="section">
+        <h2>📝 기사 기반 AI 쇼츠 제목 생성기</h2>
+        <p class="sample">기사 제목/본문을 넣으면 쇼츠 제목, 썸네일 문구, 태그를 AI가 추천합니다.</p>
+
+        <div class="field">
+          <label class="label">기사 제목</label>
+          <input id="articleTitleInput" type="text" placeholder="예: 강혜연, EXID 출신에서 트로트 가수로 반전 근황" />
+        </div>
+
+        <div class="field">
+          <label class="label">기사 본문 / 핵심 내용</label>
+          <textarea id="articleBodyInput" placeholder="기사 본문을 붙여넣어줘. 짧게 핵심만 넣어도 됩니다."></textarea>
+        </div>
+
+        <div class="title-grid">
+          <div class="field">
+            <label class="label">인물명 (선택)</label>
+            <input id="articlePersonInput" type="text" placeholder="예: 강혜연" />
+          </div>
+
+          <div class="field">
+            <label class="label">분위기</label>
+            <select id="articleToneInput">
+              <option value="자극적이지만 과장 없는 트로트 뉴스형">자극적 뉴스형</option>
+              <option value="훈훈하고 팬심을 자극하는 감성형">훈훈 감성형</option>
+              <option value="궁금증을 강하게 만드는 미스터리형">궁금증형</option>
+              <option value="레전드 무대 모음 느낌의 팬서비스형">무대 모음형</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button class="primary" onclick="generateShortsTitles()">AI 제목 생성</button>
+        </div>
+
+        <div id="titleStatus" class="status"></div>
+
+        <div id="titleResult" class="generated-list">
+          <h2>추천 결과</h2>
+          <div id="titleList"></div>
+        </div>
+      </section>
+
     </div>
 
     <div class="footer">Shorts Maker AI v2</div>
@@ -648,9 +735,12 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
       } else if (tab === "trot") {
         document.querySelectorAll(".tab")[1].classList.add("active");
         document.getElementById("trotSection").classList.add("active");
-      } else {
+      } else if (tab === "thumbnail") {
         document.querySelectorAll(".tab")[2].classList.add("active");
         document.getElementById("thumbnailSection").classList.add("active");
+      } else {
+        document.querySelectorAll(".tab")[3].classList.add("active");
+        document.getElementById("titlesSection").classList.add("active");
       }
     }
 
@@ -668,6 +758,13 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
 
     function setThumbnailStatus(message, type = "info") {
       const status = document.getElementById("thumbnailStatus");
+      status.className = "status " + type;
+      status.textContent = message;
+    }
+
+
+    function setTitleStatus(message, type = "info") {
+      const status = document.getElementById("titleStatus");
       status.className = "status " + type;
       status.textContent = message;
     }
@@ -1008,6 +1105,88 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
         downloadBlob(blob, "shorts_thumbnail_1080x1920.jpg");
         setThumbnailStatus("완료! 쇼츠 썸네일 JPG 다운로드 시작 🎉", "success");
       }, "image/jpeg", 0.95);
+    }
+
+
+    async function generateShortsTitles() {
+      const articleTitle = document.getElementById("articleTitleInput").value.trim();
+      const articleBody = document.getElementById("articleBodyInput").value.trim();
+      const person = document.getElementById("articlePersonInput").value.trim();
+      const tone = document.getElementById("articleToneInput").value;
+
+      if (!articleTitle && !articleBody) {
+        setTitleStatus("기사 제목이나 본문을 입력해줘!", "error");
+        return;
+      }
+
+      setTitleStatus("AI가 쇼츠 제목을 생성하는 중...", "info");
+
+      try {
+        const response = await fetch(API_BASE_URL + "/generate-shorts-titles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            article_title: articleTitle,
+            article_body: articleBody,
+            person_name: person,
+            tone: tone,
+            count: 10,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "제목 생성 실패");
+        }
+
+        renderGeneratedTitles(data);
+        setTitleStatus("완료! 제목 추천이 생성됐어 🎉", "success");
+      } catch (error) {
+        setTitleStatus("오류 발생: " + error.message, "error");
+      }
+    }
+
+    function renderGeneratedTitles(data) {
+      const result = document.getElementById("titleResult");
+      const list = document.getElementById("titleList");
+      list.innerHTML = "";
+
+      const titles = data.titles || [];
+      const thumbnailTexts = data.thumbnail_texts || [];
+      const tags = data.tags || [];
+
+      titles.forEach((title, index) => {
+        const div = document.createElement("div");
+        div.className = "generated-item";
+
+        const thumb = thumbnailTexts[index] || thumbnailTexts[0] || "";
+        const tagLine = tags.length ? tags.join(" ") : "";
+
+        div.innerHTML = `
+          <div class="generated-item-title">${index + 1}. ${escapeHtml(title)}</div>
+          <div><b>썸네일 문구:</b><br>${escapeHtml(thumb).replaceAll("\n", "<br>")}</div>
+          <div style="margin-top:6px;"><b>태그:</b> ${escapeHtml(tagLine)}</div>
+          <button class="generated-item-copy" onclick="copyGeneratedText('${escapeJs(title)}')">제목 복사</button>
+        `;
+
+        list.appendChild(div);
+      });
+
+      result.style.display = "block";
+    }
+
+    async function copyGeneratedText(text) {
+      await navigator.clipboard.writeText(text);
+      setTitleStatus("복사 완료!", "success");
+    }
+
+    function escapeJs(text) {
+      return String(text)
+        .replaceAll("\\", "\\\\")
+        .replaceAll("'", "\\'")
+        .replaceAll("\n", "\\n")
+        .replaceAll("\r", "");
     }
 
     function downloadBlob(blob, filename) {
