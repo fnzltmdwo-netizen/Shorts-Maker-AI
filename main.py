@@ -9,6 +9,7 @@ import zipfile
 import random
 import requests
 from pathlib import Path
+from urllib.parse import quote_plus
 
 app = FastAPI()
 
@@ -94,6 +95,16 @@ def root():
     }
 
 
+def make_google_links(name: str):
+    query = quote_plus(f"{name} 트로트")
+    image_query = quote_plus(f"{name} 트로트 사진")
+
+    return {
+        "google_news_url": f"https://www.google.com/search?tbm=nws&q={query}",
+        "google_image_url": f"https://www.google.com/search?tbm=isch&q={image_query}",
+    }
+
+
 def filter_people(gender: str = "전체", level: str = "전체"):
     people = TROT_PEOPLE
 
@@ -117,10 +128,14 @@ def random_trot_person(
         raise HTTPException(status_code=404, detail="조건에 맞는 인물이 없습니다.")
 
     person = random.choice(people)
+    links = make_google_links(person["name"])
 
     return {
-        "person": person,
-        "google_search_url": f"https://www.google.com/search?q={person['name']} 트로트",
+        "person": {
+            **person,
+            **links,
+        },
+        **links,
     }
 
 
@@ -142,7 +157,7 @@ def random_trot_people(
         "people": [
             {
                 **person,
-                "google_search_url": f"https://www.google.com/search?q={person['name']} 트로트",
+                **make_google_links(person["name"]),
             }
             for person in picked
         ],
