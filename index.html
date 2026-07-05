@@ -25,7 +25,7 @@
     }
 
     .card {
-      background: #ffffff;
+      background: #fff;
       border-radius: 24px;
       padding: 32px;
       box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
@@ -50,10 +50,12 @@
       display: flex;
       gap: 10px;
       margin-bottom: 24px;
+      flex-wrap: wrap;
     }
 
     .tab {
       flex: 1;
+      min-width: 180px;
       padding: 14px;
       border-radius: 14px;
       border: none;
@@ -69,6 +71,8 @@
 
     .section { display: none; }
     .section.active { display: block; }
+
+    .field { margin-bottom: 18px; }
 
     .label {
       font-weight: 700;
@@ -96,7 +100,7 @@
     }
 
     textarea {
-      min-height: 340px;
+      min-height: 320px;
       resize: vertical;
       line-height: 1.6;
     }
@@ -105,8 +109,6 @@
       padding: 14px;
       cursor: pointer;
     }
-
-    .field { margin-bottom: 18px; }
 
     .paste-box {
       margin-top: 10px;
@@ -123,6 +125,88 @@
     .paste-box.active {
       background: #fff1bd;
       border-color: #ff8a00;
+    }
+
+    .buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      flex: 1;
+      min-width: 180px;
+      border: none;
+      border-radius: 14px;
+      padding: 16px 20px;
+      font-size: 17px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: 0.15s;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .primary { background: #ffb703; color: #111; }
+    .secondary { background: #f1f1f1; color: #333; }
+    .danger { background: #ffecec; color: #b00020; }
+
+    .primary:hover:not(:disabled),
+    .secondary:hover:not(:disabled),
+    .danger:hover:not(:disabled) {
+      transform: translateY(-1px);
+    }
+
+    .status {
+      margin-top: 18px;
+      padding: 14px 16px;
+      border-radius: 14px;
+      display: none;
+      line-height: 1.5;
+      white-space: pre-line;
+    }
+
+    .status.info {
+      display: block;
+      background: #eef6ff;
+      color: #23527c;
+    }
+
+    .status.success {
+      display: block;
+      background: #eaf8ef;
+      color: #1f7a3f;
+    }
+
+    .status.error {
+      display: block;
+      background: #ffecec;
+      color: #b00020;
+    }
+
+    .preview,
+    .result-box {
+      margin-top: 24px;
+      display: none;
+    }
+
+    .block,
+    .person-card {
+      border: 1px solid #eee;
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 12px;
+      background: #fafafa;
+    }
+
+    .time {
+      font-weight: 700;
+      color: #ff8a00;
+      margin-bottom: 6px;
     }
 
     .file-list {
@@ -182,99 +266,6 @@
       margin: 16px 0;
     }
 
-    .buttons {
-      display: flex;
-      gap: 12px;
-      margin-top: 18px;
-      flex-wrap: wrap;
-    }
-
-    button {
-      flex: 1;
-      min-width: 180px;
-      border: none;
-      border-radius: 14px;
-      padding: 16px 20px;
-      font-size: 17px;
-      font-weight: 700;
-      cursor: pointer;
-      transition: 0.15s;
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .primary {
-      background: #ffb703;
-      color: #111;
-    }
-
-    .secondary {
-      background: #f1f1f1;
-      color: #333;
-    }
-
-    .danger {
-      background: #ffecec;
-      color: #b00020;
-    }
-
-    .primary:hover:not(:disabled),
-    .secondary:hover:not(:disabled),
-    .danger:hover:not(:disabled) {
-      transform: translateY(-1px);
-    }
-
-    .status {
-      margin-top: 18px;
-      padding: 14px 16px;
-      border-radius: 14px;
-      display: none;
-      line-height: 1.5;
-      white-space: pre-line;
-    }
-
-    .status.info {
-      display: block;
-      background: #eef6ff;
-      color: #23527c;
-    }
-
-    .status.success {
-      display: block;
-      background: #eaf8ef;
-      color: #1f7a3f;
-    }
-
-    .status.error {
-      display: block;
-      background: #ffecec;
-      color: #b00020;
-    }
-
-    .preview,
-    .result-box {
-      margin-top: 24px;
-      display: none;
-    }
-
-    .block,
-    .person-card {
-      border: 1px solid #eee;
-      border-radius: 14px;
-      padding: 16px;
-      margin-bottom: 12px;
-      background: #fafafa;
-    }
-
-    .time {
-      font-weight: 700;
-      color: #ff8a00;
-      margin-bottom: 6px;
-    }
-
     .person-name {
       font-size: 26px;
       font-weight: 900;
@@ -323,11 +314,35 @@
       margin-top: 18px;
     }
 
+    .thumbnail-preview {
+      margin-top: 20px;
+      display: none;
+      text-align: center;
+    }
+
+    .thumbnail-preview img {
+      width: 100%;
+      max-width: 420px;
+      border-radius: 16px;
+      border: 1px solid #eee;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .template-help {
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #fffaf0;
+      color: #666;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
     @media (max-width: 600px) {
       .container { padding: 24px 12px; }
       .card { padding: 24px 18px; }
       h1 { font-size: 26px; }
-      textarea { min-height: 280px; }
+      textarea { min-height: 260px; }
       .tabs { flex-direction: column; }
       .filter-grid { grid-template-columns: 1fr; }
       button { width: 100%; }
@@ -342,12 +357,13 @@
       <h1>🎬 Shorts Maker AI</h1>
 
       <p class="subtitle">
-        제목 폴더 + 음성 MP3 + 원본 대본 + 이미지 파일 패키지 생성
+        음성 패키지 + 트로트 인물 추천 + 썸네일 생성
       </p>
 
       <div class="tabs">
         <button class="tab active" onclick="showTab('audio')">🎧 Audio Pack</button>
         <button class="tab" onclick="showTab('trot')">🎲 트로트 인물 추천</button>
+        <button class="tab" onclick="showTab('thumbnail')">🖼 썸네일 생성</button>
       </div>
 
       <section id="audioSection" class="section active">
@@ -356,24 +372,20 @@
           <input
             id="titleInput"
             type="text"
-            placeholder="예: 97세 제자, 17세 선생님 등장"
+            placeholder="예: 영상75 EXID 출신 강혜연 반전 근황"
           />
         </div>
 
         <div class="field">
           <label class="label" for="scriptInput">쇼츠 대본</label>
-
           <textarea id="scriptInput" placeholder="예시:
 🎬 숏츠 대본
 
 0~2초 (훅)
-“97세 할아버지의 선생님이… 17세 오유진?”
+강혜연의 반전 근황이 공개됐습니다
 
 2~6초
-“전수경 아버지가 전국가요제 도전에 나섰는데요”
-
-6~10초
-“무려 97세지만”"></textarea>
+EXID 출신으로 알려진 강혜연은..."></textarea>
         </div>
 
         <div class="field">
@@ -387,12 +399,7 @@
             onchange="addSelectedFilesFromInput()"
           />
 
-          <div
-            id="pasteBox"
-            class="paste-box"
-            tabindex="0"
-            onclick="focusPasteBox()"
-          >
+          <div id="pasteBox" class="paste-box" tabindex="0" onclick="focusPasteBox()">
             📸 여기를 클릭한 뒤 Ctrl+V로 캡처 이미지 붙여넣기<br />
             <span class="sample">파일 선택 / 캡처 붙여넣기 둘 다 가능</span>
           </div>
@@ -403,11 +410,6 @@
 
           <div id="fileList" class="file-list"></div>
           <div id="thumbGrid" class="thumb-grid"></div>
-        </div>
-
-        <div class="sample">
-          결과 zip 구조:<br />
-          <b>제목폴더 / 대본.txt, 1.mp3, 2.mp3, 이미지01_원본.jpg...</b>
         </div>
 
         <div class="buttons">
@@ -462,10 +464,68 @@
           <div id="personList"></div>
         </div>
       </section>
+
+      <section id="thumbnailSection" class="section">
+        <h2>🖼 썸네일 생성기</h2>
+
+        <p class="sample">
+          사진 1장과 문구를 넣으면 쇼츠용 큰글씨 썸네일을 생성합니다.
+        </p>
+
+        <div class="field">
+          <label class="label" for="thumbnailTitleInput">썸네일 파일 제목</label>
+          <input
+            id="thumbnailTitleInput"
+            type="text"
+            placeholder="예: 강혜연 반전 근황"
+          />
+        </div>
+
+        <div class="field">
+          <label class="label" for="thumbnailTextInput">큰 글씨 문구</label>
+          <input
+            id="thumbnailTextInput"
+            type="text"
+            placeholder="예: 팬들의 원성을 사다"
+          />
+        </div>
+
+        <div class="field">
+          <label class="label" for="thumbnailTemplateSelect">썸네일 템플릿</label>
+          <select id="thumbnailTemplateSelect" onchange="updateTemplateHelp()">
+            <option value="center">중앙 큰글씨 - 노란 글씨 + 검은 박스</option>
+            <option value="top">상단 예능형 - 위쪽 흰 글씨</option>
+            <option value="bottom">하단 뉴스형 - 아래쪽 노란 글씨</option>
+          </select>
+
+          <div id="templateHelp" class="template-help">
+            중앙에 큰 노란 글씨가 들어갑니다. 충격/논란/반전 문구에 좋아요.
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="label" for="thumbnailImageInput">썸네일 사진 1장</label>
+          <input id="thumbnailImageInput" type="file" accept="image/*" />
+          <div class="sample">
+            현재 버전은 파일 선택 방식입니다.
+          </div>
+        </div>
+
+        <div class="buttons">
+          <button class="primary" onclick="generateThumbnail()">썸네일 생성 & 다운로드</button>
+        </div>
+
+        <div id="thumbnailStatus" class="status"></div>
+
+        <div id="thumbnailPreview" class="thumbnail-preview">
+          <h2>생성 미리보기</h2>
+          <img id="thumbnailPreviewImg" src="" alt="thumbnail preview" />
+        </div>
+      </section>
     </div>
 
     <div class="footer">
-      생성 파일: 제목 폴더 / 대본.txt, 1.mp3, 2.mp3, 이미지 파일들
+      Shorts Maker AI v2
     </div>
   </div>
 
@@ -480,9 +540,12 @@
       if (tab === "audio") {
         document.querySelectorAll(".tab")[0].classList.add("active");
         document.getElementById("audioSection").classList.add("active");
-      } else {
+      } else if (tab === "trot") {
         document.querySelectorAll(".tab")[1].classList.add("active");
         document.getElementById("trotSection").classList.add("active");
+      } else {
+        document.querySelectorAll(".tab")[2].classList.add("active");
+        document.getElementById("thumbnailSection").classList.add("active");
       }
     }
 
@@ -496,6 +559,25 @@
       const status = document.getElementById("trotStatus");
       status.className = "status " + type;
       status.textContent = message;
+    }
+
+    function setThumbnailStatus(message, type = "info") {
+      const status = document.getElementById("thumbnailStatus");
+      status.className = "status " + type;
+      status.textContent = message;
+    }
+
+    function updateTemplateHelp() {
+      const template = document.getElementById("thumbnailTemplateSelect").value;
+      const help = document.getElementById("templateHelp");
+
+      if (template === "top") {
+        help.textContent = "상단에 흰색 큰 글씨가 들어갑니다. 예능형/떡밥형 문구에 좋아요.";
+      } else if (template === "bottom") {
+        help.textContent = "하단에 노란 큰 글씨가 들어갑니다. 뉴스형/정보형 썸네일에 좋아요.";
+      } else {
+        help.textContent = "중앙에 큰 노란 글씨가 들어갑니다. 충격/논란/반전 문구에 좋아요.";
+      }
     }
 
     function getTitleText() {
@@ -529,7 +611,7 @@
 
     document.addEventListener("click", (event) => {
       const pasteBox = document.getElementById("pasteBox");
-      if (!pasteBox.contains(event.target)) {
+      if (pasteBox && !pasteBox.contains(event.target)) {
         pasteBox.classList.remove("active");
       }
     });
@@ -666,9 +748,7 @@
       try {
         const response = await fetch(API_BASE_URL + "/parse-script", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
 
@@ -720,7 +800,7 @@
       const buttons = document.querySelectorAll("button");
       buttons.forEach((button) => (button.disabled = true));
 
-      setStatus("음성 + 이미지 패키지를 생성하는 중...\n이미지가 많으면 조금 걸릴 수 있어.", "info");
+      setStatus("음성 + 이미지 패키지를 생성하는 중...\n조금 걸릴 수 있어.", "info");
 
       try {
         const formData = getFormDataPayload();
@@ -753,18 +833,8 @@
             .trim();
         }
 
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
-
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-
-        a.remove();
-        window.URL.revokeObjectURL(url);
-
-        setStatus("완료! 제목 폴더가 포함된 zip 다운로드가 시작됐어 🎉", "success");
+        downloadBlob(blob, filename);
+        setStatus("완료! zip 다운로드가 시작됐어 🎉", "success");
       } catch (error) {
         setStatus("오류 발생: " + error.message, "error");
       } finally {
@@ -865,6 +935,87 @@
       });
 
       result.style.display = "block";
+    }
+
+    async function generateThumbnail() {
+      const title = document.getElementById("thumbnailTitleInput").value.trim() || "thumbnail";
+      const thumbnailText = document.getElementById("thumbnailTextInput").value.trim();
+      const template = document.getElementById("thumbnailTemplateSelect").value;
+      const imageInput = document.getElementById("thumbnailImageInput");
+      const imageFile = imageInput.files[0];
+
+      if (!thumbnailText) {
+        setThumbnailStatus("썸네일 문구를 입력해줘!", "error");
+        return;
+      }
+
+      if (!imageFile) {
+        setThumbnailStatus("썸네일 사진을 1장 선택해줘!", "error");
+        return;
+      }
+
+      setThumbnailStatus("썸네일 생성 중...", "info");
+
+      try {
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("thumbnail_text", thumbnailText);
+        formData.append("template", template);
+        formData.append("image", imageFile);
+
+        const response = await fetch(API_BASE_URL + "/generate-thumbnail", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          let message = "썸네일 생성 실패";
+
+          try {
+            const data = await response.json();
+            message = data.detail || message;
+          } catch (e) {}
+
+          throw new Error(message);
+        }
+
+        const blob = await response.blob();
+        const previewUrl = URL.createObjectURL(blob);
+
+        const preview = document.getElementById("thumbnailPreview");
+        const previewImg = document.getElementById("thumbnailPreviewImg");
+
+        previewImg.src = previewUrl;
+        preview.style.display = "block";
+
+        const disposition = response.headers.get("Content-Disposition");
+        let filename = "thumbnail.jpg";
+
+        if (disposition && disposition.includes("filename=")) {
+          filename = disposition
+            .split("filename=")[1]
+            .replaceAll('"', "")
+            .trim();
+        }
+
+        downloadBlob(blob, filename);
+        setThumbnailStatus("완료! 썸네일 다운로드가 시작됐어 🎉", "success");
+      } catch (error) {
+        setThumbnailStatus("오류 발생: " + error.message, "error");
+      }
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+
+      a.remove();
+      window.URL.revokeObjectURL(url);
     }
 
     function escapeHtml(text) {
