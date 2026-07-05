@@ -110,6 +110,11 @@
       line-height: 1.6;
     }
 
+    input[type="file"] {
+      padding: 14px;
+      cursor: pointer;
+    }
+
     .field {
       margin-bottom: 18px;
     }
@@ -258,6 +263,18 @@
       margin-top: 18px;
     }
 
+    .file-list {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #fafafa;
+      border: 1px solid #eee;
+      color: #555;
+      font-size: 14px;
+      line-height: 1.6;
+      display: none;
+    }
+
     @media (max-width: 600px) {
       .container {
         padding: 24px 12px;
@@ -301,7 +318,7 @@
       <h1>🎬 Shorts Maker AI</h1>
 
       <p class="subtitle">
-        제목 폴더 + 프리미어용 음성 패키지 생성 + 트로트 인물 랜덤 추천
+        제목 폴더 + 음성 MP3 + 원본 대본 + 이미지 파일 패키지 생성
       </p>
 
       <div class="tabs">
@@ -335,9 +352,24 @@
 “무려 97세지만”"></textarea>
         </div>
 
+        <div class="field">
+          <label class="label" for="imageInput">이미지 업로드</label>
+          <input
+            id="imageInput"
+            type="file"
+            accept="image/*"
+            multiple
+            onchange="showSelectedImages()"
+          />
+          <div class="sample">
+            선택한 이미지는 제목 폴더 안에 바로 저장됩니다.
+          </div>
+          <div id="fileList" class="file-list"></div>
+        </div>
+
         <div class="sample">
-          제목은 zip 안의 폴더명으로 사용됩니다.<br />
-          대본은 <b>대본.txt</b>에 원본 그대로 저장됩니다.
+          결과 zip 구조:<br />
+          <b>제목폴더 / 대본.txt, 1.mp3, 2.mp3, 이미지01_원본.jpg...</b>
         </div>
 
         <div class="buttons">
@@ -395,7 +427,7 @@
     </div>
 
     <div class="footer">
-      생성 파일: 제목 폴더 / 1.mp3, 2.mp3, subtitles.srt, 대본.txt, premiere_guide.txt
+      생성 파일: 제목 폴더 / 대본.txt, 1.mp3, 2.mp3, 이미지 파일들
     </div>
   </div>
 
@@ -449,7 +481,25 @@
       return true;
     }
 
-    function getPayload() {
+    function showSelectedImages() {
+      const files = document.getElementById("imageInput").files;
+      const fileList = document.getElementById("fileList");
+
+      if (!files || files.length === 0) {
+        fileList.style.display = "none";
+        fileList.textContent = "";
+        return;
+      }
+
+      const names = Array.from(files).map((file, index) => {
+        return `이미지${String(index + 1).padStart(2, "0")} → ${file.name}`;
+      });
+
+      fileList.style.display = "block";
+      fileList.textContent = `선택된 이미지 ${files.length}개\n` + names.join("\n");
+    }
+
+    function getJsonPayload() {
       const title = getTitleText() || "shorts_project";
       const script = getScriptText();
 
@@ -459,8 +509,25 @@
       };
     }
 
+    function getFormDataPayload() {
+      const title = getTitleText() || "shorts_project";
+      const script = getScriptText();
+      const files = document.getElementById("imageInput").files;
+
+      const formData = new FormData();
+
+      formData.append("title", title);
+      formData.append("script", script);
+
+      for (let i = 0; i < files.length; i++) {
+        formData.append("images", files[i]);
+      }
+
+      return formData;
+    }
+
     async function previewScript() {
-      const payload = getPayload();
+      const payload = getJsonPayload();
 
       if (!validateScript(payload.script)) {
         return;
@@ -516,24 +583,23 @@
     }
 
     async function generatePack() {
-      const payload = getPayload();
+      const script = getScriptText();
 
-      if (!validateScript(payload.script)) {
+      if (!validateScript(script)) {
         return;
       }
 
       const buttons = document.querySelectorAll("button");
       buttons.forEach((button) => (button.disabled = true));
 
-      setStatus("음성 패키지를 생성하는 중...\n조금 걸릴 수 있어.", "info");
+      setStatus("음성 + 이미지 패키지를 생성하는 중...\n이미지가 많으면 조금 걸릴 수 있어.", "info");
 
       try {
+        const formData = getFormDataPayload();
+
         const response = await fetch(API_BASE_URL + "/generate-pack", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+          body: formData,
         });
 
         if (!response.ok) {
@@ -550,7 +616,7 @@
         const blob = await response.blob();
         const disposition = response.headers.get("Content-Disposition");
 
-        let filename = "audio_pack.zip";
+        let filename = "shorts_pack.zip";
 
         if (disposition && disposition.includes("filename=")) {
           filename = disposition
