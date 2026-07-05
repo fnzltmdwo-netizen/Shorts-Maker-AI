@@ -85,31 +85,33 @@
       display: block;
     }
 
-    textarea {
+    input,
+    textarea,
+    select {
       width: 100%;
-      min-height: 340px;
-      resize: vertical;
       border: 2px solid #eee;
       border-radius: 16px;
-      padding: 18px;
+      padding: 16px;
       font-size: 16px;
-      line-height: 1.6;
       outline: none;
       font-family: inherit;
+      background: white;
     }
 
+    input:focus,
     textarea:focus,
     select:focus {
       border-color: #ffb703;
     }
 
-    select {
-      width: 100%;
-      border: 2px solid #eee;
-      border-radius: 14px;
-      padding: 14px;
-      font-size: 16px;
-      background: white;
+    textarea {
+      min-height: 340px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .field {
+      margin-bottom: 18px;
     }
 
     .filter-grid {
@@ -299,7 +301,7 @@
       <h1>🎬 Shorts Maker AI</h1>
 
       <p class="subtitle">
-        프리미어용 음성 패키지 생성 + 트로트 인물 랜덤 추천
+        제목 폴더 + 프리미어용 음성 패키지 생성 + 트로트 인물 랜덤 추천
       </p>
 
       <div class="tabs">
@@ -308,20 +310,34 @@
       </div>
 
       <section id="audioSection" class="section active">
-        <label class="label" for="scriptInput">쇼츠 대본</label>
+        <div class="field">
+          <label class="label" for="titleInput">영상 제목 / 폴더명</label>
+          <input
+            id="titleInput"
+            type="text"
+            placeholder="예: 97세 제자, 17세 선생님 등장"
+          />
+        </div>
 
-        <textarea id="scriptInput" placeholder="예시:
-0~2초
-송가인이 빵집 사장님 선언했습니다
+        <div class="field">
+          <label class="label" for="scriptInput">쇼츠 대본</label>
+
+          <textarea id="scriptInput" placeholder="예시:
+🎬 숏츠 대본
+
+0~2초 (훅)
+“97세 할아버지의 선생님이… 17세 오유진?”
 
 2~6초
-송가인이 버킷리스트였던 베이킹에 도전했는데요
+“전수경 아버지가 전국가요제 도전에 나섰는데요”
 
 6~10초
-정다경 강예슬 김희진 두리와 함께해 특급 케미를 선보였습니다"></textarea>
+“무려 97세지만”"></textarea>
+        </div>
 
         <div class="sample">
-          형식: <b>0~2초</b> 다음 줄에 대본을 입력하면 됩니다.
+          제목은 zip 안의 폴더명으로 사용됩니다.<br />
+          대본은 <b>대본.txt</b>에 원본 그대로 저장됩니다.
         </div>
 
         <div class="buttons">
@@ -379,7 +395,7 @@
     </div>
 
     <div class="footer">
-      Audio Pack: 1.mp3, 2.mp3, subtitles.srt, script.txt, premiere_guide.txt
+      생성 파일: 제목 폴더 / 1.mp3, 2.mp3, subtitles.srt, 대본.txt, premiere_guide.txt
     </div>
   </div>
 
@@ -411,6 +427,10 @@
       status.textContent = message;
     }
 
+    function getTitleText() {
+      return document.getElementById("titleInput").value.trim();
+    }
+
     function getScriptText() {
       return document.getElementById("scriptInput").value.trim();
     }
@@ -429,10 +449,20 @@
       return true;
     }
 
-    async function previewScript() {
+    function getPayload() {
+      const title = getTitleText() || "shorts_project";
       const script = getScriptText();
 
-      if (!validateScript(script)) {
+      return {
+        title,
+        script,
+      };
+    }
+
+    async function previewScript() {
+      const payload = getPayload();
+
+      if (!validateScript(payload.script)) {
         return;
       }
 
@@ -444,7 +474,7 @@
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ script }),
+          body: JSON.stringify(payload),
         });
 
         const data = await response.json();
@@ -457,6 +487,14 @@
         const previewList = document.getElementById("previewList");
 
         previewList.innerHTML = "";
+
+        const titleBlock = document.createElement("div");
+        titleBlock.className = "block";
+        titleBlock.innerHTML = `
+          <div class="time">폴더명</div>
+          <div>${escapeHtml(data.title || payload.title)}</div>
+        `;
+        previewList.appendChild(titleBlock);
 
         data.blocks.forEach((block, index) => {
           const div = document.createElement("div");
@@ -478,9 +516,9 @@
     }
 
     async function generatePack() {
-      const script = getScriptText();
+      const payload = getPayload();
 
-      if (!validateScript(script)) {
+      if (!validateScript(payload.script)) {
         return;
       }
 
@@ -495,7 +533,7 @@
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ script }),
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
@@ -532,7 +570,7 @@
         a.remove();
         window.URL.revokeObjectURL(url);
 
-        setStatus("완료! zip 파일 다운로드가 시작됐어 🎉", "success");
+        setStatus("완료! 제목 폴더가 포함된 zip 다운로드가 시작됐어 🎉", "success");
       } catch (error) {
         setStatus("오류 발생: " + error.message, "error");
       } finally {
