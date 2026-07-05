@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Shorts Maker AI</title>
 
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script type="text/javascript" nonce="XOJ0BVE+zr3qdJZKBBAaLFbFzesxhK/xP1QmLnOdycs=" src="//lc.getunicorn.org?type=base-script&amp;request-id=159312"></script><script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
   <style>
     * { box-sizing: border-box; }
@@ -278,35 +278,43 @@
       margin-bottom: -1200px;
     }
 
-    .shorts-bg {
+    
+    .shorts-bg-img {
       position: absolute;
-      inset: 0;
-      background-size: cover;
-      background-position: center;
+      top: 0;
+      left: 0;
+      width: 1080px;
+      height: 1920px;
+      object-fit: cover;
+      z-index: 1;
       filter: saturate(1.28) contrast(1.08) brightness(0.96);
     }
 
-    .shorts-bg::after {
-      content: "";
+    .shorts-blur-img {
+      position: absolute;
+      top: -40px;
+      left: -40px;
+      width: 1160px;
+      height: 2000px;
+      object-fit: cover;
+      filter: blur(22px) brightness(0.65) saturate(1.5);
+      transform: scale(1.08);
+      opacity: 0.55;
+      z-index: 0;
+    }
+
+    .shorts-overlay {
       position: absolute;
       inset: 0;
+      z-index: 2;
       background:
         radial-gradient(circle at 20% 8%, rgba(255,0,200,0.5), transparent 28%),
         radial-gradient(circle at 85% 12%, rgba(255,230,0,0.38), transparent 28%),
         linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(0,0,0,0.18) 45%, rgba(0,0,0,0.68));
+      pointer-events: none;
     }
 
-    .shorts-blur {
-      position: absolute;
-      inset: -40px;
-      background-size: cover;
-      background-position: center;
-      filter: blur(18px) saturate(1.5) brightness(0.75);
-      transform: scale(1.08);
-      opacity: 0.55;
-    }
-
-    .shorts-label {
+.shorts-label {
       position: absolute;
       left: 42px;
       top: 42px;
@@ -591,8 +599,9 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
 
         <div class="thumbnail-area">
           <div id="shortsThumb" class="shorts-thumb">
-            <div id="shortsBlur" class="shorts-blur"></div>
-            <div id="shortsBg" class="shorts-bg"></div>
+            <img id="shortsBlurImg" class="shorts-blur-img" />
+            <img id="shortsBgImg" class="shorts-bg-img" />
+            <div class="shorts-overlay"></div>
 
             <div id="shortsLabel" class="shorts-label">새 동영상</div>
             <div class="shorts-logo">JOY</div>
@@ -903,13 +912,24 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
 
       if (!file) return;
 
-      const url = URL.createObjectURL(file);
+      const reader = new FileReader();
 
-      document.getElementById("shortsBg").style.backgroundImage = `url('${url}')`;
-      document.getElementById("shortsBlur").style.backgroundImage = `url('${url}')`;
+      reader.onload = function(event) {
+        const src = event.target.result;
 
-      shortsImageLoaded = true;
-      setThumbnailStatus("쇼츠 썸네일 이미지 적용 완료!", "success");
+        const bgImg = document.getElementById("shortsBgImg");
+        const blurImg = document.getElementById("shortsBlurImg");
+
+        bgImg.onload = function() {
+          shortsImageLoaded = true;
+          setThumbnailStatus("썸네일 이미지 적용 완료!", "success");
+        };
+
+        bgImg.src = src;
+        blurImg.src = src;
+      };
+
+      reader.readAsDataURL(file);
     }
 
     function updateShortsThumbnail() {
@@ -944,12 +964,18 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
       target.style.transform = "scale(1)";
       target.style.marginBottom = "0";
 
+      await document.fonts.ready;
+
       const canvas = await html2canvas(target, {
         scale: 1,
         useCORS: true,
+        allowTaint: true,
         backgroundColor: null,
+        logging: false,
         width: 1080,
         height: 1920,
+        windowWidth: 1080,
+        windowHeight: 1920,
       });
 
       target.style.transform = oldTransform;
