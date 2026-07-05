@@ -7,9 +7,7 @@
   <title>Shorts Maker AI</title>
 
   <style>
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
     body {
       margin: 0;
@@ -39,9 +37,7 @@
       text-align: center;
     }
 
-    h2 {
-      margin-top: 0;
-    }
+    h2 { margin-top: 0; }
 
     .subtitle {
       margin: 0 0 24px;
@@ -71,13 +67,8 @@
       color: #111;
     }
 
-    .section {
-      display: none;
-    }
-
-    .section.active {
-      display: block;
-    }
+    .section { display: none; }
+    .section.active { display: block; }
 
     .label {
       font-weight: 700;
@@ -115,8 +106,73 @@
       cursor: pointer;
     }
 
-    .field {
-      margin-bottom: 18px;
+    .field { margin-bottom: 18px; }
+
+    .paste-box {
+      margin-top: 10px;
+      border: 2px dashed #ffb703;
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      background: #fffaf0;
+      color: #555;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .paste-box.active {
+      background: #fff1bd;
+      border-color: #ff8a00;
+    }
+
+    .file-list {
+      margin-top: 10px;
+      padding: 12px;
+      border-radius: 12px;
+      background: #fafafa;
+      border: 1px solid #eee;
+      color: #555;
+      font-size: 14px;
+      line-height: 1.6;
+      display: none;
+      white-space: pre-line;
+    }
+
+    .thumb-grid {
+      display: none;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .thumb {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #eee;
+      background: #fafafa;
+      height: 110px;
+    }
+
+    .thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .thumb button {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+      min-width: auto;
+      width: 26px;
+      height: 26px;
+      padding: 0;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.65);
+      color: white;
+      font-size: 14px;
     }
 
     .filter-grid {
@@ -160,8 +216,14 @@
       color: #333;
     }
 
+    .danger {
+      background: #ffecec;
+      color: #b00020;
+    }
+
     .primary:hover:not(:disabled),
-    .secondary:hover:not(:disabled) {
+    .secondary:hover:not(:disabled),
+    .danger:hover:not(:disabled) {
       transform: translateY(-1px);
     }
 
@@ -247,9 +309,7 @@
       font-weight: 800;
     }
 
-    .image-link {
-      background: #ffe08a;
-    }
+    .image-link { background: #ffe08a; }
 
     .sample,
     .footer {
@@ -263,51 +323,15 @@
       margin-top: 18px;
     }
 
-    .file-list {
-      margin-top: 10px;
-      padding: 12px;
-      border-radius: 12px;
-      background: #fafafa;
-      border: 1px solid #eee;
-      color: #555;
-      font-size: 14px;
-      line-height: 1.6;
-      display: none;
-    }
-
     @media (max-width: 600px) {
-      .container {
-        padding: 24px 12px;
-      }
-
-      .card {
-        padding: 24px 18px;
-      }
-
-      h1 {
-        font-size: 26px;
-      }
-
-      textarea {
-        min-height: 280px;
-      }
-
-      .tabs {
-        flex-direction: column;
-      }
-
-      .filter-grid {
-        grid-template-columns: 1fr;
-      }
-
-      button {
-        width: 100%;
-      }
-
-      .search-link {
-        width: 100%;
-        text-align: center;
-      }
+      .container { padding: 24px 12px; }
+      .card { padding: 24px 18px; }
+      h1 { font-size: 26px; }
+      textarea { min-height: 280px; }
+      .tabs { flex-direction: column; }
+      .filter-grid { grid-template-columns: 1fr; }
+      button { width: 100%; }
+      .search-link { width: 100%; text-align: center; }
     }
   </style>
 </head>
@@ -354,17 +378,31 @@
 
         <div class="field">
           <label class="label" for="imageInput">이미지 업로드</label>
+
           <input
             id="imageInput"
             type="file"
             accept="image/*"
             multiple
-            onchange="showSelectedImages()"
+            onchange="addSelectedFilesFromInput()"
           />
-          <div class="sample">
-            선택한 이미지는 제목 폴더 안에 바로 저장됩니다.
+
+          <div
+            id="pasteBox"
+            class="paste-box"
+            tabindex="0"
+            onclick="focusPasteBox()"
+          >
+            📸 여기를 클릭한 뒤 Ctrl+V로 캡처 이미지 붙여넣기<br />
+            <span class="sample">파일 선택 / 캡처 붙여넣기 둘 다 가능</span>
           </div>
+
+          <div class="buttons">
+            <button class="danger" onclick="clearImages()">이미지 전체 삭제</button>
+          </div>
+
           <div id="fileList" class="file-list"></div>
+          <div id="thumbGrid" class="thumb-grid"></div>
         </div>
 
         <div class="sample">
@@ -433,6 +471,7 @@
 
   <script>
     const API_BASE_URL = "https://shorts-maker-api.onrender.com";
+    let selectedImages = [];
 
     function showTab(tab) {
       document.querySelectorAll(".tab").forEach((btn) => btn.classList.remove("active"));
@@ -481,47 +520,136 @@
       return true;
     }
 
-    function showSelectedImages() {
-      const files = document.getElementById("imageInput").files;
-      const fileList = document.getElementById("fileList");
+    function focusPasteBox() {
+      const pasteBox = document.getElementById("pasteBox");
+      pasteBox.focus();
+      pasteBox.classList.add("active");
+      setStatus("이제 Ctrl+V로 캡처 이미지를 붙여넣으면 돼!", "info");
+    }
 
-      if (!files || files.length === 0) {
-        fileList.style.display = "none";
-        fileList.textContent = "";
+    document.addEventListener("click", (event) => {
+      const pasteBox = document.getElementById("pasteBox");
+      if (!pasteBox.contains(event.target)) {
+        pasteBox.classList.remove("active");
+      }
+    });
+
+    document.addEventListener("paste", (event) => {
+      const audioSection = document.getElementById("audioSection");
+
+      if (!audioSection.classList.contains("active")) {
         return;
       }
 
-      const names = Array.from(files).map((file, index) => {
+      const items = event.clipboardData && event.clipboardData.items;
+
+      if (!items) {
+        return;
+      }
+
+      let added = 0;
+
+      for (const item of items) {
+        if (item.type && item.type.startsWith("image/")) {
+          const blob = item.getAsFile();
+
+          if (blob) {
+            const ext = item.type.includes("png") ? "png" : "jpg";
+            const filename = `clipboard_${Date.now()}_${selectedImages.length + 1}.${ext}`;
+            const file = new File([blob], filename, { type: blob.type });
+
+            selectedImages.push(file);
+            added += 1;
+          }
+        }
+      }
+
+      if (added > 0) {
+        event.preventDefault();
+        renderImageList();
+        setStatus(`캡처 이미지 ${added}개 붙여넣기 완료!`, "success");
+      }
+    });
+
+    function addSelectedFilesFromInput() {
+      const input = document.getElementById("imageInput");
+      const files = Array.from(input.files || []);
+
+      files.forEach((file) => {
+        if (file.type.startsWith("image/")) {
+          selectedImages.push(file);
+        }
+      });
+
+      input.value = "";
+      renderImageList();
+    }
+
+    function clearImages() {
+      selectedImages = [];
+      renderImageList();
+      setStatus("이미지를 모두 삭제했어.", "info");
+    }
+
+    function removeImage(index) {
+      selectedImages.splice(index, 1);
+      renderImageList();
+    }
+
+    function renderImageList() {
+      const fileList = document.getElementById("fileList");
+      const thumbGrid = document.getElementById("thumbGrid");
+
+      if (selectedImages.length === 0) {
+        fileList.style.display = "none";
+        fileList.textContent = "";
+        thumbGrid.style.display = "none";
+        thumbGrid.innerHTML = "";
+        return;
+      }
+
+      const names = selectedImages.map((file, index) => {
         return `이미지${String(index + 1).padStart(2, "0")} → ${file.name}`;
       });
 
       fileList.style.display = "block";
-      fileList.textContent = `선택된 이미지 ${files.length}개\n` + names.join("\n");
+      fileList.textContent = `선택된 이미지 ${selectedImages.length}개\n` + names.join("\n");
+
+      thumbGrid.style.display = "grid";
+      thumbGrid.innerHTML = "";
+
+      selectedImages.forEach((file, index) => {
+        const url = URL.createObjectURL(file);
+        const div = document.createElement("div");
+        div.className = "thumb";
+
+        div.innerHTML = `
+          <img src="${url}" alt="preview" />
+          <button onclick="removeImage(${index})">×</button>
+        `;
+
+        thumbGrid.appendChild(div);
+      });
     }
 
     function getJsonPayload() {
       const title = getTitleText() || "shorts_project";
       const script = getScriptText();
 
-      return {
-        title,
-        script,
-      };
+      return { title, script };
     }
 
     function getFormDataPayload() {
       const title = getTitleText() || "shorts_project";
       const script = getScriptText();
-      const files = document.getElementById("imageInput").files;
 
       const formData = new FormData();
-
       formData.append("title", title);
       formData.append("script", script);
 
-      for (let i = 0; i < files.length; i++) {
-        formData.append("images", files[i]);
-      }
+      selectedImages.forEach((file) => {
+        formData.append("images", file);
+      });
 
       return formData;
     }
