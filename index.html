@@ -265,126 +265,172 @@
       padding-bottom: 10px;
     }
 
-    .flash-thumb {
+    .shorts-thumb {
       position: relative;
-      width: 1280px;
-      height: 720px;
+      width: 1080px;
+      height: 1920px;
       flex: 0 0 auto;
       overflow: hidden;
       background: #111;
       border-radius: 18px;
       transform-origin: top center;
-      transform: scale(0.65);
-      margin-bottom: -250px;
+      transform: scale(0.35);
+      margin-bottom: -1200px;
     }
 
-    .flash-bg {
+    .shorts-bg {
       position: absolute;
       inset: 0;
       background-size: cover;
       background-position: center;
-      filter: saturate(1.3) contrast(1.08);
+      filter: saturate(1.28) contrast(1.08) brightness(0.96);
     }
 
-    .flash-bg::after {
+    .shorts-bg::after {
       content: "";
       position: absolute;
       inset: 0;
       background:
-        radial-gradient(circle at 18% 18%, rgba(255,0,200,0.45), transparent 35%),
-        radial-gradient(circle at 85% 15%, rgba(255,230,0,0.32), transparent 30%),
-        linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(0,0,0,0.55));
+        radial-gradient(circle at 20% 8%, rgba(255,0,200,0.5), transparent 28%),
+        radial-gradient(circle at 85% 12%, rgba(255,230,0,0.38), transparent 28%),
+        linear-gradient(to bottom, rgba(0,0,0,0.05), rgba(0,0,0,0.18) 45%, rgba(0,0,0,0.68));
     }
 
-    .flash-label {
+    .shorts-blur {
       position: absolute;
-      left: 28px;
-      top: 20px;
-      padding: 8px 20px;
+      inset: -40px;
+      background-size: cover;
+      background-position: center;
+      filter: blur(18px) saturate(1.5) brightness(0.75);
+      transform: scale(1.08);
+      opacity: 0.55;
+    }
+
+    .shorts-label {
+      position: absolute;
+      left: 42px;
+      top: 42px;
+      padding: 16px 32px;
       background: linear-gradient(135deg, #ff007a, #ffcf00);
       color: white;
-      font-size: 34px;
+      font-size: 56px;
       font-weight: 1000;
       border-radius: 999px;
       -webkit-text-stroke: 1px #5b004f;
-      text-shadow: 0 3px 0 #5b004f, 0 0 14px #fff;
+      text-shadow: 0 4px 0 #5b004f, 0 0 18px #fff;
       transform: rotate(-4deg);
+      z-index: 5;
     }
 
-    .flash-logo {
+    .shorts-logo {
       position: absolute;
-      right: 24px;
-      top: 22px;
-      width: 118px;
-      height: 118px;
+      right: 42px;
+      top: 42px;
+      width: 140px;
+      height: 140px;
       border-radius: 50%;
       background: white;
-      border: 7px solid #ff3030;
+      border: 8px solid #ff3030;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #e60000;
-      font-size: 34px;
+      font-size: 38px;
       font-weight: 1000;
       text-align: center;
       line-height: 0.9;
-      box-shadow: 0 0 0 4px #fff, 0 6px 18px rgba(0,0,0,0.35);
+      box-shadow: 0 0 0 5px #fff, 0 8px 22px rgba(0,0,0,0.4);
+      z-index: 5;
     }
 
-    .flash-main {
+    .sparkle {
       position: absolute;
-      left: 38px;
-      bottom: 95px;
-      width: 860px;
-      font-size: 76px;
+      color: #fff200;
+      font-size: 70px;
+      text-shadow: 0 0 18px #fff, 0 0 28px #ff00d4;
+      z-index: 6;
+    }
+
+    .sparkle.s1 { left: 70px; top: 220px; transform: rotate(-18deg); }
+    .sparkle.s2 { right: 95px; top: 300px; transform: rotate(18deg); }
+    .sparkle.s3 { left: 65px; bottom: 610px; transform: rotate(10deg); }
+
+    .shorts-main-wrap {
+      position: absolute;
+      left: 48px;
+      right: 48px;
+      bottom: 300px;
+      z-index: 7;
+    }
+
+    .shorts-main {
+      font-size: 112px;
       font-weight: 1000;
       line-height: 1.08;
       color: white;
-      -webkit-text-stroke: 6px #111;
+      -webkit-text-stroke: 7px #111;
       text-shadow:
-        0 6px 0 #111,
-        0 0 18px #ff00d4,
-        0 0 26px #00d8ff;
-      letter-spacing: -4px;
+        0 8px 0 #111,
+        0 0 22px #ff00d4,
+        0 0 36px #00d8ff;
+      letter-spacing: -5px;
+      word-break: keep-all;
     }
 
-    .flash-sub {
+    .shorts-sub {
       display: inline-block;
-      margin-top: 8px;
-      font-size: 88px;
+      margin-top: 22px;
+      font-size: 132px;
       font-weight: 1000;
       line-height: 1.05;
-      background: linear-gradient(180deg, #ffffff 0%, #ff63f7 35%, #00d8ff 100%);
+      background: linear-gradient(180deg, #ffffff 0%, #ff63f7 38%, #00d8ff 100%);
       -webkit-background-clip: text;
       color: transparent;
-      -webkit-text-stroke: 5px #111;
+      -webkit-text-stroke: 6px #111;
       text-shadow:
-        0 5px 0 #111,
-        0 0 16px #ff00d4,
-        0 0 26px #00d8ff;
+        0 7px 0 #111,
+        0 0 18px #ff00d4,
+        0 0 30px #00d8ff;
+      word-break: keep-all;
     }
 
-    .flash-time {
+    .shorts-badge {
       position: absolute;
-      right: 42px;
-      bottom: 108px;
-      font-size: 112px;
+      right: 54px;
+      bottom: 115px;
+      padding: 10px 26px;
+      font-size: 150px;
       font-weight: 1000;
       color: #fff200;
-      -webkit-text-stroke: 7px #6b0000;
+      -webkit-text-stroke: 8px #6b0000;
       text-shadow:
-        0 6px 0 #111,
-        0 0 18px #ff6a00,
-        0 0 30px #fff200;
+        0 8px 0 #111,
+        0 0 20px #ff6a00,
+        0 0 34px #fff200;
       transform: rotate(-5deg);
+      z-index: 8;
     }
 
-    .flash-border {
+    .shorts-bottom-bar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 260px;
+      background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0));
+      z-index: 4;
+    }
+
+    .shorts-border {
       position: absolute;
       inset: 0;
-      border: 10px solid #ff62d8;
-      box-shadow: inset 0 0 0 6px #fff, inset 0 0 22px #ff00d4;
+      border: 12px solid #ff62d8;
+      box-shadow:
+        inset 0 0 0 7px #fff,
+        inset 0 0 28px #ff00d4,
+        0 0 24px #ff00d4;
       pointer-events: none;
+      z-index: 10;
     }
 
     .footer {
@@ -395,9 +441,9 @@
     }
 
     @media (max-width: 800px) {
-      .flash-thumb {
-        transform: scale(0.42);
-        margin-bottom: -400px;
+      .shorts-thumb {
+        transform: scale(0.22);
+        margin-bottom: -1500px;
       }
     }
 
@@ -407,6 +453,10 @@
       .tabs { flex-direction: column; }
       .filter-grid { grid-template-columns: 1fr; }
       button { width: 100%; }
+      .shorts-thumb {
+        transform: scale(0.18);
+        margin-bottom: -1580px;
+      }
     }
   </style>
 </head>
@@ -415,12 +465,12 @@
   <div class="container">
     <div class="card">
       <h1>🎬 Shorts Maker AI</h1>
-      <p class="subtitle">음성 패키지 + 트로트 인물 추천 + 삐까뻔쩍 썸네일 생성</p>
+      <p class="subtitle">음성 패키지 + 트로트 인물 추천 + 쇼츠용 세로 썸네일 생성</p>
 
       <div class="tabs">
         <button class="tab active" onclick="showTab('audio')">🎧 Audio Pack</button>
         <button class="tab" onclick="showTab('trot')">🎲 트로트 인물 추천</button>
-        <button class="tab" onclick="showTab('thumbnail')">✨ 썸네일 생성</button>
+        <button class="tab" onclick="showTab('thumbnail')">✨ 쇼츠 썸네일</button>
       </div>
 
       <section id="audioSection" class="section active">
@@ -506,50 +556,59 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
       </section>
 
       <section id="thumbnailSection" class="section">
-        <h2>✨ 삐까뻔쩍 썸네일 생성기</h2>
+        <h2>✨ 쇼츠용 삐까뻔쩍 썸네일 V2</h2>
 
         <div class="field">
           <label class="label">썸네일 사진</label>
-          <input id="flashImageInput" type="file" accept="image/*" onchange="loadFlashImage()" />
+          <input id="shortsImageInput" type="file" accept="image/*" onchange="loadShortsImage()" />
         </div>
 
         <div class="field">
-          <label class="label">상단 작은 라벨</label>
-          <input id="flashLabelInput" type="text" value="새 동영상" oninput="updateFlashThumbnail()" />
+          <label class="label">상단 라벨</label>
+          <input id="shortsLabelInput" type="text" value="새 동영상" oninput="updateShortsThumbnail()" />
         </div>
 
         <div class="field">
           <label class="label">흰색 메인 문구</label>
-          <input id="flashMainInput" type="text" value="인형 미모의 노래 모음" oninput="updateFlashThumbnail()" />
+          <input id="shortsMainInput" type="text" value="인형 미모의 노래 모음" oninput="updateShortsThumbnail()" />
         </div>
 
         <div class="field">
           <label class="label">그라데이션 강조 문구</label>
-          <input id="flashSubInput" type="text" value="트롯 바비 홍지윤" oninput="updateFlashThumbnail()" />
+          <input id="shortsSubInput" type="text" value="트롯 바비 홍지윤" oninput="updateShortsThumbnail()" />
         </div>
 
         <div class="field">
-          <label class="label">오른쪽 강조 문구</label>
-          <input id="flashTimeInput" type="text" value="100분" oninput="updateFlashThumbnail()" />
+          <label class="label">오른쪽 아래 배지</label>
+          <input id="shortsBadgeInput" type="text" value="100분" oninput="updateShortsThumbnail()" />
         </div>
 
         <div class="buttons">
-          <button class="primary" onclick="downloadFlashThumbnail()">썸네일 JPG 다운로드</button>
+          <button class="primary" onclick="downloadShortsThumbnail()">쇼츠 썸네일 JPG 다운로드</button>
         </div>
 
         <div id="thumbnailStatus" class="status"></div>
 
         <div class="thumbnail-area">
-          <div id="flashThumb" class="flash-thumb">
-            <div id="flashBg" class="flash-bg"></div>
-            <div id="flashLabel" class="flash-label">새 동영상</div>
-            <div class="flash-logo">JOY</div>
-            <div class="flash-main">
-              <div id="flashMain">인형 미모의 노래 모음</div>
-              <div id="flashSub" class="flash-sub">트롯 바비 홍지윤</div>
+          <div id="shortsThumb" class="shorts-thumb">
+            <div id="shortsBlur" class="shorts-blur"></div>
+            <div id="shortsBg" class="shorts-bg"></div>
+
+            <div id="shortsLabel" class="shorts-label">새 동영상</div>
+            <div class="shorts-logo">JOY</div>
+
+            <div class="sparkle s1">✦</div>
+            <div class="sparkle s2">✧</div>
+            <div class="sparkle s3">✦</div>
+
+            <div class="shorts-main-wrap">
+              <div id="shortsMain" class="shorts-main">인형 미모의 노래 모음</div>
+              <div id="shortsSub" class="shorts-sub">트롯 바비 홍지윤</div>
             </div>
-            <div id="flashTime" class="flash-time">100분</div>
-            <div class="flash-border"></div>
+
+            <div id="shortsBadge" class="shorts-badge">100분</div>
+            <div class="shorts-bottom-bar"></div>
+            <div class="shorts-border"></div>
           </div>
         </div>
       </section>
@@ -561,7 +620,7 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
   <script>
     const API_BASE_URL = "https://shorts-maker-api.onrender.com";
     let selectedImages = [];
-    let flashImageLoaded = false;
+    let shortsImageLoaded = false;
 
     function showTab(tab) {
       document.querySelectorAll(".tab").forEach((btn) => btn.classList.remove("active"));
@@ -603,8 +662,8 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
         return false;
       }
 
-      if (!script.match(/\d+(\.\d+)?\s*[~\\-]\s*\d+(\.\d+)?\s*초/)) {
-        setStatus("시간 형식이 필요해!\\n예: 0~2초", "error");
+      if (!script.match(/\d+(\.\d+)?\s*[~\-]\s*\d+(\.\d+)?\s*초/)) {
+        setStatus("시간 형식이 필요해!\n예: 0~2초", "error");
         return false;
       }
 
@@ -618,7 +677,6 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
 
     document.addEventListener("paste", (event) => {
       const audioSection = document.getElementById("audioSection");
-
       if (!audioSection.classList.contains("active")) return;
 
       const items = event.clipboardData && event.clipboardData.items;
@@ -682,8 +740,8 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
 
       fileList.style.display = "block";
       fileList.textContent =
-        `선택된 이미지 ${selectedImages.length}개\\n` +
-        selectedImages.map((file, i) => `이미지${String(i + 1).padStart(2, "0")} → ${file.name}`).join("\\n");
+        `선택된 이미지 ${selectedImages.length}개\n` +
+        selectedImages.map((file, i) => `이미지${String(i + 1).padStart(2, "0")} → ${file.name}`).join("\n");
 
       thumbGrid.style.display = "grid";
       thumbGrid.innerHTML = "";
@@ -839,55 +897,67 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
       result.style.display = "block";
     }
 
-    function loadFlashImage() {
-      const input = document.getElementById("flashImageInput");
+    function loadShortsImage() {
+      const input = document.getElementById("shortsImageInput");
       const file = input.files[0];
 
       if (!file) return;
 
       const url = URL.createObjectURL(file);
-      document.getElementById("flashBg").style.backgroundImage = `url('${url}')`;
-      flashImageLoaded = true;
-      setThumbnailStatus("이미지 적용 완료!", "success");
+
+      document.getElementById("shortsBg").style.backgroundImage = `url('${url}')`;
+      document.getElementById("shortsBlur").style.backgroundImage = `url('${url}')`;
+
+      shortsImageLoaded = true;
+      setThumbnailStatus("쇼츠 썸네일 이미지 적용 완료!", "success");
     }
 
-    function updateFlashThumbnail() {
-      document.getElementById("flashLabel").textContent =
-        document.getElementById("flashLabelInput").value || "새 동영상";
+    function updateShortsThumbnail() {
+      document.getElementById("shortsLabel").textContent =
+        document.getElementById("shortsLabelInput").value || "새 동영상";
 
-      document.getElementById("flashMain").textContent =
-        document.getElementById("flashMainInput").value || "인형 미모의 노래 모음";
+      document.getElementById("shortsMain").textContent =
+        document.getElementById("shortsMainInput").value || "인형 미모의 노래 모음";
 
-      document.getElementById("flashSub").textContent =
-        document.getElementById("flashSubInput").value || "트롯 바비 홍지윤";
+      document.getElementById("shortsSub").textContent =
+        document.getElementById("shortsSubInput").value || "트롯 바비 홍지윤";
 
-      document.getElementById("flashTime").textContent =
-        document.getElementById("flashTimeInput").value || "100분";
+      document.getElementById("shortsBadge").textContent =
+        document.getElementById("shortsBadgeInput").value || "100분";
     }
 
-    async function downloadFlashThumbnail() {
-      updateFlashThumbnail();
+    async function downloadShortsThumbnail() {
+      updateShortsThumbnail();
 
-      if (!flashImageLoaded) {
+      if (!shortsImageLoaded) {
         setThumbnailStatus("먼저 썸네일 사진을 선택해줘!", "error");
         return;
       }
 
-      setThumbnailStatus("썸네일 이미지 생성 중...", "info");
+      setThumbnailStatus("쇼츠 썸네일 생성 중...", "info");
 
-      const target = document.getElementById("flashThumb");
+      const target = document.getElementById("shortsThumb");
+
+      const oldTransform = target.style.transform;
+      const oldMargin = target.style.marginBottom;
+
+      target.style.transform = "scale(1)";
+      target.style.marginBottom = "0";
 
       const canvas = await html2canvas(target, {
         scale: 1,
         useCORS: true,
         backgroundColor: null,
-        width: 1280,
-        height: 720,
+        width: 1080,
+        height: 1920,
       });
 
+      target.style.transform = oldTransform;
+      target.style.marginBottom = oldMargin;
+
       canvas.toBlob((blob) => {
-        downloadBlob(blob, "flash_thumbnail.jpg");
-        setThumbnailStatus("완료! JPG 다운로드가 시작됐어 🎉", "success");
+        downloadBlob(blob, "shorts_thumbnail_1080x1920.jpg");
+        setThumbnailStatus("완료! 쇼츠 썸네일 JPG 다운로드 시작 🎉", "success");
       }, "image/jpeg", 0.95);
     }
 
