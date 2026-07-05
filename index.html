@@ -1072,48 +1072,84 @@ function updateShortsThumbnail() {
   }
 }
 
-    async function downloadShortsThumbnail() {
-      updateShortsThumbnail();
+ async function downloadShortsThumbnail() {
+  updateShortsThumbnail();
 
-      if (!shortsImageLoaded) {
-        setThumbnailStatus("먼저 썸네일 사진을 선택해줘!", "error");
-        return;
-      }
+  if (!shortsImageLoaded) {
+    setThumbnailStatus("먼저 썸네일 사진을 선택해줘!", "error");
+    return;
+  }
 
-      setThumbnailStatus("쇼츠 썸네일 생성 중...", "info");
+  setThumbnailStatus("쇼츠 썸네일 생성 중...", "info");
 
-      const target = document.getElementById("shortsThumb");
+  const target = document.getElementById("shortsThumb");
+  const bgImg = document.getElementById("shortsBgImg");
+  const blurImg = document.getElementById("shortsBlurImg");
 
-      const oldTransform = target.style.transform;
-      const oldMargin = target.style.marginBottom;
+  bgImg.style.cssText = `
+    position:absolute;
+    top:0;
+    left:0;
+    width:1080px;
+    height:1920px;
+    max-width:none;
+    max-height:none;
+    object-fit:cover;
+    object-position:center center;
+    display:block;
+    filter:saturate(1.28) contrast(1.08) brightness(0.96);
+    z-index:1;
+  `;
 
-      target.style.transform = "scale(1)";
-      target.style.marginBottom = "0";
+  blurImg.style.cssText = `
+    position:absolute;
+    top:-40px;
+    left:-40px;
+    width:1160px;
+    height:2000px;
+    max-width:none;
+    max-height:none;
+    object-fit:cover;
+    object-position:center center;
+    display:block;
+    filter:blur(22px) brightness(0.65) saturate(1.5);
+    transform:scale(1.08);
+    opacity:0.55;
+    z-index:0;
+  `;
 
-      await document.fonts.ready;
-      const bgImg = document.getElementById("shortsBgImg");
-      const blurImg = document.getElementById("shortsBlurImg");
-      if (bgImg.decode) await bgImg.decode().catch(() => {});
-      if (blurImg.decode) await blurImg.decode().catch(() => {});
+  const oldTransform = target.style.transform;
+  const oldMargin = target.style.marginBottom;
 
-      const canvas = await html2canvas(target, {
-        scale: 1,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: null,
-        logging: false,
-        width: 1080,
-        height: 1920,
-      });
+  target.style.transform = "none";
+  target.style.marginBottom = "0";
+  target.style.width = "1080px";
+  target.style.height = "1920px";
 
-      target.style.transform = oldTransform;
-      target.style.marginBottom = oldMargin;
+  await document.fonts.ready;
 
-      canvas.toBlob((blob) => {
-        downloadBlob(blob, "shorts_thumbnail_1080x1920.jpg");
-        setThumbnailStatus("완료! 쇼츠 썸네일 JPG 다운로드 시작 🎉", "success");
-      }, "image/jpeg", 0.95);
-    }
+  setTimeout(async () => {
+    const canvas = await html2canvas(target, {
+      scale: 1,
+      width: 1080,
+      height: 1920,
+      windowWidth: 1080,
+      windowHeight: 1920,
+      backgroundColor: null,
+      useCORS: true,
+      allowTaint: true,
+      logging: false
+    });
+
+    target.style.transform = oldTransform;
+    target.style.marginBottom = oldMargin;
+
+    canvas.toBlob((blob) => {
+      downloadBlob(blob, "shorts_thumbnail_1080x1920.jpg");
+      setThumbnailStatus("완료! 쇼츠 썸네일 JPG 다운로드 시작 🎉", "success");
+    }, "image/jpeg", 0.95);
+  }, 300);
+}
 
 
     async function generateShortsTitles() {
