@@ -31,6 +31,7 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 class ScriptRequest(BaseModel):
     script: str
+    title: str = "shorts_project"
 
 
 TROT_PEOPLE = [
@@ -93,6 +94,27 @@ def root():
         "status": "running",
         "trot_people_count": len(TROT_PEOPLE),
     }
+
+
+def safe_filename(name: str) -> str:
+    name = name.strip()
+
+    if not name:
+        name = "shorts_project"
+
+    name = re.sub(r'[\\/:*?"<>|]', "", name)
+    name = re.sub(r"\s+", " ", name)
+    name = name.strip(" .")
+
+    if not name:
+        name = "shorts_project"
+
+    return name[:80]
+
+
+def zip_safe_filename(name: str) -> str:
+    name = safe_filename(name)
+    return name.replace(" ", "_")
 
 
 def make_google_links(name: str):
@@ -253,6 +275,13 @@ def create_srt(blocks, srt_path: Path):
     srt_path.write_text("\n".join(lines), encoding="utf-8")
 
 
+def create_original_script_txt(original_script: str, txt_path: Path):
+    txt_path.write_text(
+        original_script.strip(),
+        encoding="utf-8-sig",
+    )
+
+
 def generate_elevenlabs_mp3(text: str, output_path: Path):
     if not ELEVENLABS_API_KEY:
         raise HTTPException(status_code=500, detail="ELEVENLABS_API_KEY가 없습니다.")
@@ -286,25 +315,17 @@ def generate_elevenlabs_mp3(text: str, output_path: Path):
     output_path.write_bytes(response.content)
 
 
-def create_script_txt(blocks, txt_path: Path):
-    lines = []
-
-    for index, block in enumerate(blocks, start=1):
-        lines.append(f"{index}. {block['start']}~{block['end']}초")
-        lines.append(block["text"])
-        lines.append("")
-
-    txt_path.write_text("\n".join(lines), encoding="utf-8")
-
-
-def create_premiere_guide(blocks, guide_path: Path):
+def create_premiere_guide(blocks, guide_path: Path, title: str):
     lines = []
     lines.append("프리미어 작업 가이드")
+    lines.append("")
+    lines.append(f"프로젝트 제목: {title}")
     lines.append("")
     lines.append("1. 1.mp3, 2.mp3, 3.mp3 순서대로 A1 트랙에 배치")
     lines.append("2. 사진은 각 구간 길이에 맞게 V1 트랙에 배치")
     lines.append("3. 자막은 직접 프리미어 Essential Graphics에서 제작")
     lines.append("4. subtitles.srt는 참고용 기본 자막입니다")
+    lines.append("5. 대본.txt는 입력한 원본 대본 그대로 저장한 파일입니다")
     lines.append("")
     lines.append("컷별 구성")
     lines.append("")
@@ -315,7 +336,7 @@ def create_premiere_guide(blocks, guide_path: Path):
         lines.append(f"내용: {block['text']}")
         lines.append("")
 
-    guide_path.write_text("\n".join(lines), encoding="utf-8")
+    guide_path.write_text("\n".join(lines), encoding="utf-8-sig")
 
 
 @app.post("/parse-script")
@@ -329,6 +350,7 @@ def parse_script_api(request: ScriptRequest):
         raise HTTPException(status_code=400, detail="시간 형식을 찾지 못했습니다.")
 
     return {
+        "title": safe_filename(request.title),
         "count": len(blocks),
         "blocks": blocks,
     }
@@ -339,31 +361,36 @@ def generate_pack(request: ScriptRequest):
     if not request.script.strip():
         raise HTTPException(status_code=400, detail="대본이 비어있습니다.")
 
+    title = safe_filename(request.title)
+    zip_title = zip_safe_filename(title)
+
     blocks = parse_script(request.script)
 
     if not blocks:
         raise HTTPException(status_code=400, detail="시간 형식을 찾지 못했습니다.")
 
     job_id = str(uuid.uuid4())[:8]
-    job_dir = OUTPUT_DIR / job_id
-    job_dir.mkdir(exist_ok=True)
+    job_dir = OUTPUT_DIR / f"{zip_title}_{job_id}"
+    project_dir = job_dir / title
+    project_dir.mkdir(parents=True, exist_ok=True)
 
     for index, block in enumerate(blocks, start=1):
-        mp3_path = job_dir / f"{index}.mp3"
+        mp3_path = project_dir / f"{index}.mp3"
         generate_elevenlabs_mp3(block["text"], mp3_path)
 
-    create_srt(blocks, job_dir / "subtitles.srt")
-    create_script_txt(blocks, job_dir / "script.txt")
-    create_premiere_guide(blocks, job_dir / "premiere_guide.txt")
+    create_srt(blocks, project_dir / "subtitles.srt")
+    create_original_script_txt(request.script, project_dir / "대본.txt")
+    create_premiere_guide(blocks, project_dir / "premiere_guide.txt", title)
 
-    zip_path = OUTPUT_DIR / f"audio_pack_{job_id}.zip"
+    zip_path = OUTPUT_DIR / f"{zip_title}_{job_id}.zip"
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        for file_path in job_dir.iterdir():
-            zip_file.write(file_path, arcname=file_path.name)
+        for file_path in project_dir.iterdir():
+            arcname = f"{title}/{file_path.name}"
+            zip_file.write(file_path, arcname=arcname)
 
     return FileResponse(
         path=zip_path,
-        filename=f"audio_pack_{job_id}.zip",
+        filename=f"{zip_title}_{job_id}.zip",
         media_type="application/zip",
     )
