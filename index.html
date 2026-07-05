@@ -271,7 +271,7 @@
       height: 1920px;
       flex: 0 0 auto;
       overflow: hidden;
-      background: #111;
+      background: transparent;
       border-radius: 18px;
       transform-origin: top center;
       transform: scale(0.35);
@@ -1053,16 +1053,24 @@ EXID 출신으로 알려진 강혜연은..."></textarea>
       reader.readAsDataURL(file);
     }
 
-    function updateShortsThumbnail() {
-      document.getElementById("shortsMain").textContent =
-        document.getElementById("shortsMainInput").value || "인형 미모의 노래 모음";
+function updateShortsThumbnail() {
+  document.getElementById("shortsMain").textContent =
+    document.getElementById("shortsMainInput").value || "인형 미모의 노래 모음";
 
-      document.getElementById("shortsSub").textContent =
-        document.getElementById("shortsSubInput").value || "트롯 바비 홍지윤";
+  document.getElementById("shortsSub").textContent =
+    document.getElementById("shortsSubInput").value || "트롯 바비 홍지윤";
 
-      document.getElementById("shortsBadge").textContent =
-        document.getElementById("shortsBadgeInput").value || "100분";
-    }
+  const badgeValue = document.getElementById("shortsBadgeInput").value.trim();
+  const badge = document.getElementById("shortsBadge");
+
+  if (badgeValue) {
+    badge.textContent = badgeValue;
+    badge.style.display = "block";
+  } else {
+    badge.textContent = "";
+    badge.style.display = "none";
+  }
+}
 
     async function downloadShortsThumbnail() {
       updateShortsThumbnail();
