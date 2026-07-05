@@ -120,7 +120,7 @@ def random_trot_person(
 
     return {
         "person": person,
-        "naver_search_url": f"https://search.naver.com/search.naver?query={person['name']} 트로트",
+        "google_search_url": f"https://www.google.com/search?q={person['name']} 트로트",
     }
 
 
@@ -142,7 +142,7 @@ def random_trot_people(
         "people": [
             {
                 **person,
-                "naver_search_url": f"https://search.naver.com/search.naver?query={person['name']} 트로트",
+                "google_search_url": f"https://www.google.com/search?q={person['name']} 트로트",
             }
             for person in picked
         ],
