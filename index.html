@@ -3,10 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Shorts Maker AI</title>
 
   <style>
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+    }
 
     body {
       margin: 0;
@@ -24,16 +27,20 @@
     }
 
     .card {
-      background: #fff;
+      background: #ffffff;
       border-radius: 24px;
       padding: 32px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
     }
 
     h1 {
       margin: 0 0 10px;
       font-size: 32px;
       text-align: center;
+    }
+
+    h2 {
+      margin-top: 0;
     }
 
     .subtitle {
@@ -91,7 +98,8 @@
       font-family: inherit;
     }
 
-    textarea:focus, select:focus {
+    textarea:focus,
+    select:focus {
       border-color: #ffb703;
     }
 
@@ -177,16 +185,18 @@
       color: #b00020;
     }
 
-    .preview, .result-box {
+    .preview,
+    .result-box {
       margin-top: 24px;
       display: none;
     }
 
-    .block, .person-card {
+    .block,
+    .person-card {
       border: 1px solid #eee;
       border-radius: 14px;
-      padding: 14px 16px;
-      margin-bottom: 10px;
+      padding: 16px;
+      margin-bottom: 12px;
       background: #fafafa;
     }
 
@@ -197,14 +207,15 @@
     }
 
     .person-name {
-      font-size: 24px;
+      font-size: 26px;
       font-weight: 900;
-      margin-bottom: 8px;
+      margin-bottom: 10px;
     }
 
     .badge {
       display: inline-block;
       margin-right: 6px;
+      margin-bottom: 6px;
       padding: 5px 9px;
       border-radius: 999px;
       font-size: 13px;
@@ -212,9 +223,15 @@
       background: #fff1bd;
     }
 
+    .link-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
     .search-link {
       display: inline-block;
-      margin-top: 12px;
       color: #111;
       background: #ffb703;
       padding: 10px 14px;
@@ -223,7 +240,12 @@
       font-weight: 800;
     }
 
-    .sample, .footer {
+    .image-link {
+      background: #ffe08a;
+    }
+
+    .sample,
+    .footer {
       color: #777;
       font-size: 14px;
       line-height: 1.5;
@@ -235,11 +257,38 @@
     }
 
     @media (max-width: 600px) {
-      .card { padding: 24px 18px; }
-      h1 { font-size: 26px; }
-      textarea { min-height: 280px; }
-      .tabs, .filter-grid { grid-template-columns: 1fr; flex-direction: column; }
-      button { width: 100%; }
+      .container {
+        padding: 24px 12px;
+      }
+
+      .card {
+        padding: 24px 18px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      textarea {
+        min-height: 280px;
+      }
+
+      .tabs {
+        flex-direction: column;
+      }
+
+      .filter-grid {
+        grid-template-columns: 1fr;
+      }
+
+      button {
+        width: 100%;
+      }
+
+      .search-link {
+        width: 100%;
+        text-align: center;
+      }
     }
   </style>
 </head>
@@ -248,6 +297,7 @@
   <div class="container">
     <div class="card">
       <h1>🎬 Shorts Maker AI</h1>
+
       <p class="subtitle">
         프리미어용 음성 패키지 생성 + 트로트 인물 랜덤 추천
       </p>
@@ -265,7 +315,10 @@
 송가인이 빵집 사장님 선언했습니다
 
 2~6초
-송가인이 버킷리스트였던 베이킹에 도전했는데요"></textarea>
+송가인이 버킷리스트였던 베이킹에 도전했는데요
+
+6~10초
+정다경 강예슬 김희진 두리와 함께해 특급 케미를 선보였습니다"></textarea>
 
         <div class="sample">
           형식: <b>0~2초</b> 다음 줄에 대본을 입력하면 됩니다.
@@ -286,8 +339,9 @@
 
       <section id="trotSection" class="section">
         <h2>🎲 트로트 인물 랜덤 추천기</h2>
+
         <p class="sample">
-          오늘 다룰 트로트 인물을 랜덤으로 추천해줘요.
+          오늘 다룰 트로트 인물을 랜덤으로 추천합니다.
         </p>
 
         <div class="filter-grid">
@@ -333,8 +387,8 @@
     const API_BASE_URL = "https://shorts-maker-api.onrender.com";
 
     function showTab(tab) {
-      document.querySelectorAll(".tab").forEach(btn => btn.classList.remove("active"));
-      document.querySelectorAll(".section").forEach(sec => sec.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach((btn) => btn.classList.remove("active"));
+      document.querySelectorAll(".section").forEach((sec) => sec.classList.remove("active"));
 
       if (tab === "audio") {
         document.querySelectorAll(".tab")[0].classList.add("active");
@@ -377,14 +431,19 @@
 
     async function previewScript() {
       const script = getScriptText();
-      if (!validateScript(script)) return;
+
+      if (!validateScript(script)) {
+        return;
+      }
 
       setStatus("대본을 분석하는 중...", "info");
 
       try {
         const response = await fetch(API_BASE_URL + "/parse-script", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ script }),
         });
 
@@ -396,15 +455,18 @@
 
         const preview = document.getElementById("preview");
         const previewList = document.getElementById("previewList");
+
         previewList.innerHTML = "";
 
         data.blocks.forEach((block, index) => {
           const div = document.createElement("div");
           div.className = "block";
+
           div.innerHTML = `
             <div class="time">${index + 1}. ${block.start}초 ~ ${block.end}초</div>
             <div>${escapeHtml(block.text)}</div>
           `;
+
           previewList.appendChild(div);
         });
 
@@ -417,39 +479,51 @@
 
     async function generatePack() {
       const script = getScriptText();
-      if (!validateScript(script)) return;
+
+      if (!validateScript(script)) {
+        return;
+      }
 
       const buttons = document.querySelectorAll("button");
-      buttons.forEach(button => button.disabled = true);
+      buttons.forEach((button) => (button.disabled = true));
 
       setStatus("음성 패키지를 생성하는 중...\n조금 걸릴 수 있어.", "info");
 
       try {
         const response = await fetch(API_BASE_URL + "/generate-pack", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ script }),
         });
 
         if (!response.ok) {
           let message = "패키지 생성 실패";
+
           try {
             const data = await response.json();
             message = data.detail || message;
           } catch (e) {}
+
           throw new Error(message);
         }
 
         const blob = await response.blob();
         const disposition = response.headers.get("Content-Disposition");
+
         let filename = "audio_pack.zip";
 
         if (disposition && disposition.includes("filename=")) {
-          filename = disposition.split("filename=")[1].replaceAll('"', "").trim();
+          filename = disposition
+            .split("filename=")[1]
+            .replaceAll('"', "")
+            .trim();
         }
 
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
+
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
@@ -462,7 +536,7 @@
       } catch (error) {
         setStatus("오류 발생: " + error.message, "error");
       } finally {
-        buttons.forEach(button => button.disabled = false);
+        buttons.forEach((button) => (button.disabled = false));
       }
     }
 
@@ -478,7 +552,9 @@
       setTrotStatus("추천 중...", "info");
 
       try {
-        const url = `${API_BASE_URL}/random-trot-person?gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
+        const url =
+          `${API_BASE_URL}/random-trot-person?gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
+
         const response = await fetch(url);
         const data = await response.json();
 
@@ -486,11 +562,7 @@
           throw new Error(data.detail || "추천 실패");
         }
 
-        renderPeople([{
-          ...data.person,
-          naver_search_url: data.naver_search_url
-        }]);
-
+        renderPeople([data.person]);
         setTrotStatus("1명 추천 완료!", "success");
       } catch (error) {
         setTrotStatus("오류 발생: " + error.message, "error");
@@ -502,7 +574,9 @@
       setTrotStatus("추천 중...", "info");
 
       try {
-        const url = `${API_BASE_URL}/random-trot-people?count=5&gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
+        const url =
+          `${API_BASE_URL}/random-trot-people?count=5&gender=${encodeURIComponent(gender)}&level=${encodeURIComponent(level)}`;
+
         const response = await fetch(url);
         const data = await response.json();
 
@@ -524,6 +598,18 @@
       list.innerHTML = "";
 
       people.forEach((person) => {
+        const newsUrl =
+          person.google_news_url ||
+          person.google_search_url ||
+          person.naver_search_url ||
+          "#";
+
+        const imageUrl =
+          person.google_image_url ||
+          person.google_search_url ||
+          person.naver_search_url ||
+          "#";
+
         const div = document.createElement("div");
         div.className = "person-card";
 
@@ -532,10 +618,15 @@
           <span class="badge">${escapeHtml(person.gender)}</span>
           <span class="badge">${escapeHtml(person.level)}</span>
           <span class="badge">${escapeHtml(person.category)}</span>
-          <br />
-          <a class="search-link" href="${person.google_search_url}" target="_blank">
-            구글에서 기사/사진 찾기
-          </a>
+
+          <div class="link-row">
+            <a class="search-link" href="${newsUrl}" target="_blank">
+              📰 최신 기사 보기
+            </a>
+            <a class="search-link image-link" href="${imageUrl}" target="_blank">
+              🖼 사진 찾기
+            </a>
+          </div>
         `;
 
         list.appendChild(div);
